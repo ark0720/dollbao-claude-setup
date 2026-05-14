@@ -68,4 +68,16 @@ AI 會讀 [`docs/MAINTAINER.md`](docs/MAINTAINER.md) 後照流程做完並開 PR
 
 ## License / Scope
 
-僅供逗寶國際內部使用。本 repo 為 private，包含公司資源連結（spreadsheet ID、BQ table 路徑等），請勿外傳。
+逗寶國際內部使用為主，repo 為 **public**（方便新人 Claude Code AI 無 auth 就能 clone）。
+
+**為何 public 不算機密外洩：**
+- repo 只含「安裝劇本 + skill 範本 + 指向公司資源的 ID 字串」
+- 真正的資料（規章 spreadsheet、逗寶曆 BQ table、規章 Docs）由 **Google IAM 保護**：沒授權的人就算知道 ID 也讀不到內容
+- 不存任何 API key / token / 密碼
+
+**不要 commit 進來的：**
+- 任何 OAuth refresh token、API key、Google service account JSON
+- 真實員工個資、財務數字、商業機密
+- `PLAN.md` / `CONTEXT.md`（已在 `.gitignore`，是 ark0720 工作文件）
+
+如果未來真的需要藏東西，再拆出一個 private companion repo。

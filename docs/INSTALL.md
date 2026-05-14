@@ -24,10 +24,10 @@
 | 1 | 環境檢查 | PowerShell 偵測 Windows / winget / 網路 | 30 秒 |
 | 2 | 裝 Node.js LTS | `winget install OpenJS.NodeJS.LTS` | 2 分鐘 |
 | 3 | 裝 Git | `winget install Git.Git` | 1 分鐘 |
-| 4 | 裝 GitHub CLI | `winget install GitHub.cli` | 1 分鐘 |
+| 4 | 裝 GitHub CLI（可選） | `winget install GitHub.cli` | 1 分鐘 |
 | 5 | 裝 Google Cloud SDK (含 gcloud + bq CLI) | `winget install Google.CloudSDK` | 3 分鐘 |
-| 6 | `gh auth login` | 引導瀏覽器授權 | 1 分鐘 |
-| 7 | Clone setup repo | `gh repo clone ark0720/dollbao-claude-setup ~/.claude/dollbao-setup` | 30 秒 |
+| ~~6~~ | ~~`gh auth login`~~ | **跳過** — repo 已 public，clone 不需 auth | — |
+| 7 | Clone setup repo | `git clone https://github.com/ark0720/dollbao-claude-setup.git $env:USERPROFILE\.claude\dollbao-setup` | 30 秒 |
 | **8** | **裝 gws CLI** | `npm install -g @googleworkspace/cli` | 1 分鐘 |
 | 9 | `gws auth login` | 引導瀏覽器授權 | 1 分鐘 |
 | 10 | 裝 gws skill bundle | 跑 `~/.claude/dollbao-setup/scripts/helpers/install-gws-bundle.ps1`（依 `manifest/skills-lock.json` 拉 ~85 個非 persona-* skill 到 `~/.claude/skills/`） | 2 分鐘 |
@@ -35,7 +35,7 @@
 | 12 | `verify-install.ps1` | 自動檢查所有工具 / skill 都裝好 | 30 秒 |
 | 13 | 5 題驗證 | AI 出題、用戶答 | 5 分鐘 |
 
-**總計：約 20 分鐘。**
+**總計：約 19 分鐘。**（公開 repo 後省下 gh auth 1 分鐘）
 
 ---
 
@@ -58,17 +58,18 @@
 - **指令細節：** ⏸️ M2.3 填（每步驟確認 winget id / silent flag / 驗證輸出格式）
 - **對話模板：** ⏸️ M2.3 填
 
-### 步驟 6：`gh auth login`
-- **意圖：** GitHub CLI 認證，後續 clone private repo 用
-- **指令：** ⏸️ M2.3 填（含 HTTPS protocol 提示）
-- **成功判準：** `gh auth status` 顯示已 login + active account
-- **失敗 fallback：** ⏸️ M2.3 填
+### 步驟 6：~~`gh auth login`~~（已跳過）
+- **本步驟跳過。** `dollbao-claude-setup` repo 已設為 public，clone 不需要 GitHub 帳號或 auth
+- gh CLI 本身仍裝（步驟 4），但只有 ark0720 自己日後維護 repo 時才用得到
+- 如果 user 主動問起或希望也順便 auth（例如他自己也想用 gh CLI 做別的事），AI 才需引導 `gh auth login`
 
 ### 步驟 7：Clone setup repo
 - **意圖：** 把本 repo 拉到 `~/.claude/dollbao-setup/`
-- **指令：** `gh repo clone ark0720/dollbao-claude-setup "$env:USERPROFILE\.claude\dollbao-setup"`
+- **指令：** `git clone https://github.com/ark0720/dollbao-claude-setup.git "$env:USERPROFILE\.claude\dollbao-setup"`
 - **成功判準：** `Test-Path "$env:USERPROFILE\.claude\dollbao-setup\manifest\common.json"`
-- **失敗 fallback：** ⏸️ M2.3 填（多半是 auth 沒過、或 repo 名打錯）
+- **失敗 fallback：**
+  - clone 失敗 → 多半是網路擋 github.com，提示 user 聯絡 IT
+  - 目標資料夾已存在 → AI 改跑 `git -C "$env:USERPROFILE\.claude\dollbao-setup" pull` 更新
 
 ### 步驟 8：裝 gws CLI
 - **意圖：** gws CLI 是所有 gws-* / recipe-* skill 的執行引擎（skill 內呼叫 `gws gmail +triage` 之類）
@@ -206,7 +207,7 @@
 | 網路 timeout | 重試 1 次，仍失敗 → 提示用戶檢查網路後重貼 prompt |
 | winget 抓不到 package | fallback 到 `fallback_url`（在 `manifest/common.json`） |
 | 權限不足 | 提示用系統管理員身分開新 PowerShell |
-| `gh auth login` 沒走完 | 引導重跑，並提示用 HTTPS protocol（非 SSH） |
+| `git clone` 失敗（步驟 7） | 多半是公司 firewall 擋 github.com，提示聯絡 IT |
 | `gws auth login` 失敗 | 檢查是否為公司 Google 帳號（非個人 gmail） |
 | `npm install -g @googleworkspace/cli` 失敗 | 提示用 admin PowerShell 重跑；若 npm proxy 問題 → 設 `npm config set registry https://registry.npmjs.org/` |
 | 步驟 10 hash mismatch | lock 與上游不一致；先跑 `generate-skills-lock.ps1` 更新 lock 再重試 |

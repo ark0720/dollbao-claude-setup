@@ -147,7 +147,7 @@ Check-Command "npm"    "npm (隨 Node)"
 Check-Command "gws"    "gws CLI (Google Workspace CLI)"
 
 Section "Auth 狀態"
-Check-Auth -Cmd "gh"     -ArgList @("auth","status") -Name "GitHub CLI 已 auth"               -SuccessPattern "Logged in"
+Check-Auth -Cmd "gh"     -ArgList @("auth","status") -Name "GitHub CLI 已 auth (warn-only)"   -SuccessPattern "Logged in" -WarnOnly
 Check-Auth -Cmd "gws"    -ArgList @("auth","status") -Name "gws CLI 已 auth"                  -SuccessPattern "(?i)(logged in|authenticated|active|email)"
 Check-Auth -Cmd "gcloud" -ArgList @("auth","list")   -Name "gcloud CLI 已 auth (warn-only)"   -SuccessPattern "ACTIVE" -WarnOnly
 
