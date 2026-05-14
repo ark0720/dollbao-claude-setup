@@ -1,0 +1,63 @@
+{
+  "version": "1",
+  "scope": "common",
+  "_comment": "Phase 1 全員必裝清單。M1 骨架，M2 補完 verify_cmd / fallback_url / 確認 winget id。",
+  "tools": [
+    {
+      "id": "OpenJS.NodeJS.LTS",
+      "name": "Node.js LTS",
+      "installer": "winget",
+      "verify_cmd": "node --version",
+      "fallback_url": "https://nodejs.org/",
+      "required": true,
+      "_todo_m2": "M2 確認 winget id 與 silent 安裝 flag"
+    },
+    {
+      "id": "Git.Git",
+      "name": "Git",
+      "installer": "winget",
+      "verify_cmd": "git --version",
+      "fallback_url": "https://git-scm.com/",
+      "required": true,
+      "_todo_m2": "M2 確認 winget id"
+    },
+    {
+      "id": "GitHub.cli",
+      "name": "GitHub CLI",
+      "installer": "winget",
+      "verify_cmd": "gh --version",
+      "fallback_url": "https://cli.github.com/",
+      "required": true
+    },
+    {
+      "id": "Google.CloudSDK",
+      "name": "Google Cloud SDK (含 bq CLI)",
+      "installer": "winget",
+      "verify_cmd": "gcloud --version",
+      "fallback_url": "https://cloud.google.com/sdk/docs/install",
+      "required": true,
+      "_todo_m2": "M2 確認 winget id；驗證 bq CLI 是否同時裝上（gcloud bundle 應已含）"
+    }
+  ],
+  "skill_bundles": [
+    {
+      "id": "gws",
+      "source": "googleworkspace/cli",
+      "lockfile": "skills-lock.json",
+      "exclude_patterns": ["persona-*"],
+      "_todo_m2": "M2 階段確認 .agents/skills-lock.json 是否仍適用，搬到 manifest/skills-lock.json"
+    }
+  ],
+  "skills": [
+    {
+      "id": "dollbao-handbook",
+      "path": "skills/dollbao-handbook",
+      "_todo_m3": "M3 階段填入 digest（由 M2.5 獨立 session 預先產生）+ spreadsheet fallback 邏輯"
+    },
+    {
+      "id": "dollbao-calendar",
+      "path": "skills/dollbao-calendar",
+      "_todo_m3": "M3 階段填入 BQ schema（由 M2.5 ark0720 提供）+ 範例 SQL"
+    }
+  ]
+}

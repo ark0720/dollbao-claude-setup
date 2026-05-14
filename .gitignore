@@ -1,0 +1,15 @@
+# Div7_新人CC安裝包 工作文件（orchestrate 本專案用，不屬於 repo 內容）
+PLAN.md
+CONTEXT.md
+_SESSION_BOOTSTRAP.md
+
+# Google Drive 同步產物
+desktop.ini
+
+# OS / Editor
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.tmp

@@ -1,0 +1,47 @@
+# verify.yml — CI for dollbao-claude-setup
+# ⏸️ M2 階段填完。M1 為骨架（驗證 JSON 合法 + markdown front-matter）。
+
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate JSON syntax
+        run: |
+          set -e
+          for f in manifest/*.json; do
+            if [ -f "$f" ]; then
+              echo "  Checking $f"
+              jq empty "$f"
+            fi
+          done
+
+      - name: Check skill frontmatter exists
+        run: |
+          set -e
+          for f in skills/*/SKILL.md; do
+            if [ -f "$f" ]; then
+              echo "  Checking $f"
+              head -1 "$f" | grep -q '^---$' || { echo "❌ $f 缺少 frontmatter"; exit 1; }
+            fi
+          done
+
+  # ⏸️ M2 補：在 Windows runner 跑 verify-install.ps1
+  # verify-install-windows:
+  #   runs-on: windows-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Run verify-install
+  #       shell: pwsh
+  #       run: ./scripts/verify-install.ps1
+
+  # ⏸️ M2 補：跑 scripts/helpers/validate-manifest.ps1 做 schema-level 檢查
