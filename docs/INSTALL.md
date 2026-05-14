@@ -66,7 +66,7 @@
 | `dollbao-handbook` | 兩層索引型 | 公司規章查詢（請假、考核、Drive 規則、共用圖檔規則…） |
 | `dollbao-calendar` | BQ 查詢型 | 逗寶曆（會計年度、第幾週、檔期、節氣特賣…） |
 
-新增條目時，記得同步 `manifest/common.json` 的 `skills` 陣列（見 MAINTAINER.md §4）。
+新增條目時，記得**先讀 MAINTAINER.md §4 判斷歸屬**（個人 / 草稿 / 全員 / 部門），確認是全員 skill 才走 §7 SOP 同步 `manifest/common.json`。
 
 ---
 
