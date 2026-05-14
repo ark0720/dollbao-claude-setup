@@ -1,5 +1,4 @@
 # verify.yml — CI for dollbao-claude-setup
-# ⏸️ M2 階段填完。M1 為骨架（驗證 JSON 合法 + markdown front-matter）。
 
 name: verify
 
@@ -10,12 +9,12 @@ on:
     branches: [main]
 
 jobs:
-  validate-manifest:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate JSON syntax
+      - name: Validate JSON syntax (manifest/*.json)
         run: |
           set -e
           for f in manifest/*.json; do
@@ -25,23 +24,103 @@ jobs:
             fi
           done
 
-      - name: Check skill frontmatter exists
+      - name: Validate skills-lock.json structure
+        run: |
+          set -e
+          lock=manifest/skills-lock.json
+          test -f $lock
+          jq -e '
+            (.version | type == "string") and
+            (.source_repo | type == "string") and
+            (.source_commit | test("^[a-f0-9]{40}$")) and
+            (.skills | length > 0) and
+            (.skills | all(
+              (.name | test("^[a-z][a-z0-9-]+$")) and
+              (.path | startswith("skills/")) and
+              (.path | endswith("/SKILL.md")) and
+              (.blob_sha1 | test("^[a-f0-9]{40}$")) and
+              (.size | type == "number" and . > 0)
+            ))
+          ' $lock > /dev/null
+          echo "  ✅ schema OK"
+
+          # total_skills 對得上 skills.length
+          claimed=$(jq -r '.total_skills' $lock)
+          actual=$(jq -r '.skills | length' $lock)
+          if [ "$claimed" != "$actual" ]; then
+            echo "  ❌ total_skills ($claimed) ≠ skills.length ($actual)"
+            exit 1
+          fi
+          echo "  ✅ total_skills = $actual"
+
+      - name: Validate common.json skills[].path actually exist
+        run: |
+          set -e
+          jq -r '.skills[] | .path' manifest/common.json | while read path; do
+            if [ ! -d "$path" ]; then
+              echo "  ❌ common.json skills[] path 不存在: $path"
+              exit 1
+            fi
+            if [ ! -f "$path/SKILL.md" ]; then
+              echo "  ❌ $path 沒有 SKILL.md"
+              exit 1
+            fi
+            echo "  ✅ $path/SKILL.md"
+          done
+
+      - name: Check SKILL.md frontmatter present
         run: |
           set -e
           for f in skills/*/SKILL.md; do
             if [ -f "$f" ]; then
-              echo "  Checking $f"
               head -1 "$f" | grep -q '^---$' || { echo "❌ $f 缺少 frontmatter"; exit 1; }
+              # 必要欄位
+              grep -q '^name:' "$f" || { echo "❌ $f 缺少 name 欄位"; exit 1; }
+              grep -q '^description:' "$f" || { echo "❌ $f 缺少 description 欄位"; exit 1; }
+              echo "  ✅ $f"
             fi
           done
 
-  # ⏸️ M2 補：在 Windows runner 跑 verify-install.ps1
-  # verify-install-windows:
-  #   runs-on: windows-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: Run verify-install
-  #       shell: pwsh
-  #       run: ./scripts/verify-install.ps1
+      - name: PowerShell syntax check
+        shell: pwsh
+        run: |
+          $errors = @()
+          Get-ChildItem -Recurse -Filter *.ps1 scripts | ForEach-Object {
+            $tokens = $null; $parseErrors = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$parseErrors)
+            if ($parseErrors) {
+              Write-Host "❌ $($_.Name)" -ForegroundColor Red
+              $parseErrors | ForEach-Object {
+                Write-Host "  L$($_.Extent.StartLineNumber): $($_.Message)" -ForegroundColor Red
+              }
+              $errors += $_.Name
+            } else {
+              Write-Host "  ✅ $($_.Name)" -ForegroundColor Green
+            }
+          }
+          if ($errors) {
+            Write-Host ""
+            Write-Host "❌ $($errors.Count) 個 .ps1 syntax error"
+            exit 1
+          }
 
-  # ⏸️ M2 補：跑 scripts/helpers/validate-manifest.ps1 做 schema-level 檢查
+      - name: Verify .ps1 files have UTF-8 BOM (PS 5.1 中文支援需要)
+        run: |
+          set -e
+          missing=0
+          for f in $(find scripts -name "*.ps1"); do
+            head -c 3 "$f" | xxd | grep -q "efbb bf" || {
+              echo "  ❌ $f 缺 UTF-8 BOM"
+              missing=$((missing + 1))
+            }
+          done
+          if [ $missing -gt 0 ]; then
+            echo ""
+            echo "PS 5.1 預設用 ANSI codepage 讀 .ps1，含中文檔案需要 UTF-8 BOM"
+            echo "修法：用 PowerShell 跑"
+            echo "  \$utf8 = [System.Text.UTF8Encoding]::new(\$true)"
+            echo "  \$c = [System.IO.File]::ReadAllText(\$path)"
+            echo "  [System.IO.File]::WriteAllText(\$path, \$c, \$utf8)"
+            exit 1
+          fi
+          echo "  ✅ 所有 .ps1 都有 UTF-8 BOM"
