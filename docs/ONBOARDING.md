@@ -18,7 +18,7 @@
 
 ---
 
-## Bootstrap prompt（M2.7 — Secret Manager 流程）
+## Bootstrap prompt（M2.8 — Secret Manager + Claude defaults）
 
 ```
 請幫我跑逗寶新人安裝流程。我沒有 GitHub 帳號也不需要，setup repo 已公開。
