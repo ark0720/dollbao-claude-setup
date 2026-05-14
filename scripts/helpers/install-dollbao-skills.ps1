@@ -1,4 +1,4 @@
-# install-dollbao-skills.ps1
+﻿# install-dollbao-skills.ps1
 # 把 repo 內 skills/ 底下「列在 manifest/common.json 的 skills[] 陣列」的自製 skill
 # 複製到 ~/.claude/skills/。Idempotent — 已存在且 hash 一致則 skip。
 
@@ -21,7 +21,8 @@ Write-Host ""
 Write-Host "📦 自製 skill (dollbao-*) 安裝" -ForegroundColor Cyan
 Write-Host "─────────────────────────────────" -ForegroundColor DarkGray
 
-$common = Get-Content $commonPath -Raw | ConvertFrom-Json
+# Read JSON as UTF-8 explicitly (PS 5.1 Get-Content uses ANSI on non-BOM files)
+$common = [System.IO.File]::ReadAllText($commonPath, [System.Text.UTF8Encoding]::new($false)) | ConvertFrom-Json
 $skills = @($common.skills)
 
 if ($skills.Count -eq 0) {
@@ -29,7 +30,8 @@ if ($skills.Count -eq 0) {
     exit 0
 }
 
-Write-Host "要安裝 $($skills.Count) 個自製 skill：$(($skills | ForEach-Object { $_.id }) -join ', ')"
+$skillNames = ($skills | ForEach-Object { $_.id }) -join ', '
+Write-Host "要安裝 $($skills.Count) 個自製 skill：$skillNames"
 Write-Host ""
 
 $dest = Join-Path $env:USERPROFILE ".claude\skills"

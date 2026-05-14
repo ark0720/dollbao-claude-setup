@@ -1,4 +1,4 @@
-# install-gws-bundle.ps1
+﻿# install-gws-bundle.ps1
 # 從 manifest/skills-lock.json 指定的 commit 把 gws skill bundle 安裝到 ~/.claude/skills/
 #
 # 用法：
@@ -35,8 +35,10 @@ Write-Host ""
 Write-Host "📦 gws skill bundle 安裝" -ForegroundColor Cyan
 Write-Host "─────────────────────────────────" -ForegroundColor DarkGray
 
-$lock = Get-Content $lockPath -Raw | ConvertFrom-Json
-$common = Get-Content $commonPath -Raw | ConvertFrom-Json
+# Read JSON as UTF-8 explicitly (PS 5.1 Get-Content uses ANSI on non-BOM files)
+$utf8 = [System.Text.UTF8Encoding]::new($false)
+$lock = [System.IO.File]::ReadAllText($lockPath, $utf8) | ConvertFrom-Json
+$common = [System.IO.File]::ReadAllText($commonPath, $utf8) | ConvertFrom-Json
 
 $bundle = $common.skill_bundles | Where-Object { $_.id -eq "gws" }
 if (-not $bundle) { throw "common.json 沒有 id=gws 的 skill_bundle" }

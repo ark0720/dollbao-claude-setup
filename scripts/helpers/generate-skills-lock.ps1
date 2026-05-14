@@ -1,4 +1,4 @@
-# generate-skills-lock.ps1
+﻿# generate-skills-lock.ps1
 # 重新生成 manifest/skills-lock.json，反映上游 googleworkspace/cli 最新 commit。
 #
 # 用法：
@@ -60,7 +60,9 @@ $lock = [ordered]@{
 $repoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $outPath = Join-Path $repoRoot "manifest\skills-lock.json"
 
-$lock | ConvertTo-Json -Depth 5 | Set-Content -Path $outPath -Encoding utf8
+# Write UTF-8 without BOM (matches other manifest files; PS 5.1 Set-Content -Encoding utf8 adds BOM)
+$jsonText = ($lock | ConvertTo-Json -Depth 5) + "`n"
+[System.IO.File]::WriteAllText($outPath, $jsonText, [System.Text.UTF8Encoding]::new($false))
 
 $personaCount = ($skills | Where-Object { $_.name -like 'persona-*' }).Count
 

@@ -1,4 +1,4 @@
-# verify-install.ps1
+﻿# verify-install.ps1
 # 自動檢查 dollbao-claude-setup 安裝是否完整。
 # ⏸️ M2 階段填完。M1 為骨架，可立即跑（會檢查基礎工具）。
 
