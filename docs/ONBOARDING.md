@@ -18,7 +18,7 @@
 
 ---
 
-## Bootstrap prompt（M2 鎖定 — 已移除 gh auth 依賴）
+## Bootstrap prompt（M2.6 — public repo + 共用 OAuth client）
 
 ```
 請幫我跑逗寶新人安裝流程。我沒有 GitHub 帳號也不需要，setup repo 已公開。
@@ -29,13 +29,16 @@
 2. 用 git clone 把 setup repo 拉到我家目錄：
    git clone https://github.com/ark0720/dollbao-claude-setup.git ~/.claude/dollbao-setup
 3. 用 npm 裝 gws CLI：npm install -g @googleworkspace/cli
-4. 引導我跑 `gws auth login`（請務必用我的公司 Google 帳號，非個人 gmail）
-5. 跑 ~/.claude/dollbao-setup/scripts/helpers/install-gws-bundle.ps1
+4. 把 ~/.claude/dollbao-setup/config/gws-client-secret.json 複製到
+   ~/.config/gws/client_secret.json（先檢查不是 placeholder；若 client_id
+   還是 TODO_REPLACE_... 就停下來請我聯絡 ark0720）
+5. 引導我跑 `gws auth login`（請務必用我的公司 Google 帳號，非個人 gmail）
+6. 跑 ~/.claude/dollbao-setup/scripts/helpers/install-gws-bundle.ps1
    裝完整 gws skill bundle（約 85 個 skill，排除 persona-*）
-6. 跑 ~/.claude/dollbao-setup/scripts/helpers/install-dollbao-skills.ps1
+7. 跑 ~/.claude/dollbao-setup/scripts/helpers/install-dollbao-skills.ps1
    裝逗寶自製 skill（dollbao-handbook、dollbao-calendar）
-7. 跑 ~/.claude/dollbao-setup/scripts/verify-install.ps1 自動檢查
-8. 最後給我 5 題驗證題，確認所有工具都裝好了
+8. 跑 ~/.claude/dollbao-setup/scripts/verify-install.ps1 自動檢查
+9. 最後給我 5 題驗證題，確認所有工具都裝好了
 
 完整安裝邏輯請參考 repo 內的 docs/INSTALL.md（在 ~/.claude/dollbao-setup/docs/INSTALL.md）
 ```

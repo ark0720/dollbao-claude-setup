@@ -29,13 +29,14 @@
 | ~~6~~ | ~~`gh auth login`~~ | **跳過** — repo 已 public，clone 不需 auth | — |
 | 7 | Clone setup repo | `git clone https://github.com/ark0720/dollbao-claude-setup.git $env:USERPROFILE\.claude\dollbao-setup` | 30 秒 |
 | **8** | **裝 gws CLI** | `npm install -g @googleworkspace/cli` | 1 分鐘 |
+| **8.5** | **配置 gws OAuth client** | 複製 `~/.claude/dollbao-setup/config/gws-client-secret.json` 到 `~/.config/gws/client_secret.json` | 10 秒 |
 | 9 | `gws auth login` | 引導瀏覽器授權 | 1 分鐘 |
 | 10 | 裝 gws skill bundle | 跑 `~/.claude/dollbao-setup/scripts/helpers/install-gws-bundle.ps1`（依 `manifest/skills-lock.json` 拉 ~85 個非 persona-* skill 到 `~/.claude/skills/`） | 2 分鐘 |
 | 11 | 裝自製 skill | 跑 `~/.claude/dollbao-setup/scripts/helpers/install-dollbao-skills.ps1`（依 `manifest/common.json` 的 `skills[]` 複製到 `~/.claude/skills/`） | 30 秒 |
 | 12 | `verify-install.ps1` | 自動檢查所有工具 / skill 都裝好 | 30 秒 |
 | 13 | 5 題驗證 | AI 出題、用戶答 | 5 分鐘 |
 
-**總計：約 19 分鐘。**（公開 repo 後省下 gh auth 1 分鐘）
+**總計：約 19 分鐘。**（含 step 8.5 配置 OAuth client 10 秒）
 
 ---
 
@@ -87,9 +88,26 @@
   - PATH 找不到 `gws` → 提示重啟 PowerShell（npm global bin 需要 PATH 重載）
 - **對話模板：** 「我接下來裝 Google Workspace CLI（gws），所有 gws-* skill 都靠它運作。約需 1 分鐘。可以嗎？」
 
+### 步驟 8.5：配置 gws OAuth client（公司共用 credentials）
+- **意圖：** gws CLI 要跟 Google API 對話，需要一組 OAuth client credentials（client_id + client_secret）。逗寶用一個公司 GCP 專案統一管理，每個新人本機都複製同一份 credentials 檔。
+- **前置：** repo 已 clone（步驟 7）+ gws CLI 已裝（步驟 8）
+- **檢查 placeholder：** 先讀 `~/.claude/dollbao-setup/config/gws-client-secret.json`：
+  - 若 `client_id` 仍是 `TODO_REPLACE_WITH_REAL_CLIENT_ID...` → ark0720 還沒填真值，**停下來告知 user 聯絡 ark0720**，不要繼續
+  - 若是真實值 → 繼續複製
+- **指令：**
+  ```powershell
+  $gwsCfg = Join-Path $env:USERPROFILE ".config\gws"
+  New-Item -ItemType Directory -Force -Path $gwsCfg | Out-Null
+  Copy-Item "$env:USERPROFILE\.claude\dollbao-setup\config\gws-client-secret.json" `
+            (Join-Path $gwsCfg "client_secret.json") -Force
+  ```
+- **成功判準：** `Test-Path "$env:USERPROFILE\.config\gws\client_secret.json"` 且檔案不含 "TODO_REPLACE"
+- **失敗 fallback：** 重新複製；若 placeholder 還在 → 把 `config/README.md` 連結給 ark0720 看
+- **對話模板：** 「我接下來把公司的 gws OAuth client 設定檔複製到你本機 gws CLI 的預設位置。這個檔案是逗寶內部共用的，不是你個人的；下一步 `gws auth login` 才是綁定你的帳號。」
+
 ### 步驟 9：`gws auth login`
 - **意圖：** 把新人的 Google Workspace 帳號 OAuth 授權給 gws CLI
-- **前置：** gws CLI 已裝（步驟 8）
+- **前置：** gws CLI 已裝（步驟 8）+ OAuth client 已配置（步驟 8.5）
 - **指令：**
   ```powershell
   gws auth login
@@ -208,7 +226,8 @@
 | winget 抓不到 package | fallback 到 `fallback_url`（在 `manifest/common.json`） |
 | 權限不足 | 提示用系統管理員身分開新 PowerShell |
 | `git clone` 失敗（步驟 7） | 多半是公司 firewall 擋 github.com，提示聯絡 IT |
-| `gws auth login` 失敗 | 檢查是否為公司 Google 帳號（非個人 gmail） |
+| `gws auth login` 失敗 | (a) 檢查 step 8.5 是否跑過（`~/.config/gws/client_secret.json` 存在且不含 TODO_REPLACE）；(b) 檢查是否為公司 Google 帳號（非個人 gmail） |
+| step 8.5 看到 placeholder | ark0720 還沒在 GCP Console 建 OAuth client，請聯絡他完成 `config/README.md` 內的設定步驟 |
 | `npm install -g @googleworkspace/cli` 失敗 | 提示用 admin PowerShell 重跑；若 npm proxy 問題 → 設 `npm config set registry https://registry.npmjs.org/` |
 | 步驟 10 hash mismatch | lock 與上游不一致；先跑 `generate-skills-lock.ps1` 更新 lock 再重試 |
 | `bq query` 失敗（IAM） | 提示用戶聯絡 ark0720 確認群組成員資格 |
