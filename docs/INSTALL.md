@@ -2,64 +2,156 @@
 
 > 這份文件是給 **Claude AI** 讀的。當新人貼完 bootstrap prompt 後，AI 會依本劇本一步步引導。
 >
-> ⏸️ **M1 階段為骨架**，每步驟的「指令 / 判準 / fallback / 對話模板」詳細內容於 M2 補完。
+> ⏸️ **M2 階段：** Steps 8 / 10 / 11 已填完實際邏輯。Steps 1-7 / 12-13 在 M2.3 補完。
 
 ---
 
 ## 0. 對話原則
 
-1. **繁體中文** — 所有訊息用繁體中文，工具名稱保留原文（winget、gh、gws、bq...）
+1. **繁體中文** — 所有訊息用繁體中文，工具名稱保留原文（winget、gh、gws、bq、npm...）
 2. **每步驟先確認再動手** — 跑 `winget install` 前先說「我接下來要裝 Node.js LTS，約需 1 分鐘，可以嗎？」等用戶 OK 再跑
 3. **失敗給明確中文錯誤** — 不要只貼英文 stack trace；先用人話說「網路抓不到 package」再附原始錯誤
 4. **Idempotent** — 已裝的工具用 `Get-Command` 偵測到就 skip 並告知用戶「Node.js 已裝（v20.x），跳過此步驟」
 5. **避免假設工程背景** — 對非工程同事用「桌面、檔案總管」等日常詞彙，不用「shell、stdout、env var」
-6. **完成一個 milestone 後給進度條** — 「目前進度 3/12」
+6. **完成一個 milestone 後給進度條** — 「目前進度 3/13」
 
 ---
 
 ## 1. 安裝步驟總覽
 
-| # | 步驟 | 工具 | 預計時間 |
+| # | 步驟 | 工具 / 動作 | 預計時間 |
 |---|---|---|---|
-| 1 | 環境檢查 | PowerShell 偵測 | 30 秒 |
-| 2 | 裝 Node.js LTS | `winget OpenJS.NodeJS.LTS` | 2 分鐘 |
-| 3 | 裝 Git | `winget Git.Git` | 1 分鐘 |
-| 4 | 裝 GitHub CLI | `winget GitHub.cli` | 1 分鐘 |
-| 5 | 裝 Google Cloud SDK (含 gcloud + bq CLI) | `winget Google.CloudSDK` | 3 分鐘 |
+| 1 | 環境檢查 | PowerShell 偵測 Windows / winget / 網路 | 30 秒 |
+| 2 | 裝 Node.js LTS | `winget install OpenJS.NodeJS.LTS` | 2 分鐘 |
+| 3 | 裝 Git | `winget install Git.Git` | 1 分鐘 |
+| 4 | 裝 GitHub CLI | `winget install GitHub.cli` | 1 分鐘 |
+| 5 | 裝 Google Cloud SDK (含 gcloud + bq CLI) | `winget install Google.CloudSDK` | 3 分鐘 |
 | 6 | `gh auth login` | 引導瀏覽器授權 | 1 分鐘 |
-| 7 | Clone repo | `gh repo clone ark0720/dollbao-claude-setup ~/.claude/dollbao-setup` | 30 秒 |
-| 8 | `gws auth login` | 引導瀏覽器授權 | 1 分鐘 |
-| 9 | 裝 gws skill bundle | 依 `manifest/skills-lock.json` 安裝 ~93 個 gws-* / recipe-* skill（排除 persona-*） | 2 分鐘 |
-| 10 | 裝自製 skill | 把 `~/.claude/dollbao-setup/skills/*` 複製到 `~/.claude/skills/` | 30 秒 |
-| 11 | `scripts/verify-install.ps1` | 自動檢查 | 30 秒 |
-| 12 | 5 題驗證 | AI 出題、用戶答 | 5 分鐘 |
+| 7 | Clone setup repo | `gh repo clone ark0720/dollbao-claude-setup ~/.claude/dollbao-setup` | 30 秒 |
+| **8** | **裝 gws CLI** | `npm install -g @googleworkspace/cli` | 1 分鐘 |
+| 9 | `gws auth login` | 引導瀏覽器授權 | 1 分鐘 |
+| 10 | 裝 gws skill bundle | 跑 `~/.claude/dollbao-setup/scripts/helpers/install-gws-bundle.ps1`（依 `manifest/skills-lock.json` 拉 ~85 個非 persona-* skill 到 `~/.claude/skills/`） | 2 分鐘 |
+| 11 | 裝自製 skill | 跑 `~/.claude/dollbao-setup/scripts/helpers/install-dollbao-skills.ps1`（依 `manifest/common.json` 的 `skills[]` 複製到 `~/.claude/skills/`） | 30 秒 |
+| 12 | `verify-install.ps1` | 自動檢查所有工具 / skill 都裝好 | 30 秒 |
+| 13 | 5 題驗證 | AI 出題、用戶答 | 5 分鐘 |
 
 **總計：約 20 分鐘。**
 
 ---
 
-## 2. 各步驟細節（M2 補完）
+## 2. 各步驟細節
 
 ### 步驟 1：環境檢查
 - **意圖：** 確認 Windows 版本、winget 可用、有網路
-- **指令：** ⏸️ M2 填
-- **成功判準：** ⏸️ M2 填
-- **失敗 fallback：** ⏸️ M2 填
-- **對話模板：** ⏸️ M2 填
+- **指令：** ⏸️ M2.3 填
+- **成功判準：** ⏸️ M2.3 填
+- **失敗 fallback：** ⏸️ M2.3 填
+- **對話模板：** ⏸️ M2.3 填
 
-### 步驟 2：裝 Node.js LTS
-- **意圖：** 部分 MCP / 工具跑在 Node
-- **指令：** `winget install OpenJS.NodeJS.LTS --silent`（M2 確認）
-- **成功判準：** `node --version` 回傳 v20+
-- **失敗 fallback：** 從 https://nodejs.org/ 手動下載 LTS
-- **對話模板：** ⏸️ M2 填
+### 步驟 2-5：裝基礎工具（Node / Git / gh / gcloud）
+- **意圖：** 後續工具的前置依賴
+- **共用模式：**
+  1. `Get-Command {cmd}` 偵測 — 已有 → skip + 告知 user「已裝 (v...)」
+  2. 否則跑 `winget install {id} --silent --accept-source-agreements --accept-package-agreements`
+  3. 跑 `verify_cmd`（見 `manifest/common.json`）確認
+  4. winget 失敗 → 提示 `fallback_url`（也在 common.json）讓 user 手動下載
+- **指令細節：** ⏸️ M2.3 填（每步驟確認 winget id / silent flag / 驗證輸出格式）
+- **對話模板：** ⏸️ M2.3 填
 
-### 步驟 3-12
-⏸️ M2 補完。
+### 步驟 6：`gh auth login`
+- **意圖：** GitHub CLI 認證，後續 clone private repo 用
+- **指令：** ⏸️ M2.3 填（含 HTTPS protocol 提示）
+- **成功判準：** `gh auth status` 顯示已 login + active account
+- **失敗 fallback：** ⏸️ M2.3 填
+
+### 步驟 7：Clone setup repo
+- **意圖：** 把本 repo 拉到 `~/.claude/dollbao-setup/`
+- **指令：** `gh repo clone ark0720/dollbao-claude-setup "$env:USERPROFILE\.claude\dollbao-setup"`
+- **成功判準：** `Test-Path "$env:USERPROFILE\.claude\dollbao-setup\manifest\common.json"`
+- **失敗 fallback：** ⏸️ M2.3 填（多半是 auth 沒過、或 repo 名打錯）
+
+### 步驟 8：裝 gws CLI
+- **意圖：** gws CLI 是所有 gws-* / recipe-* skill 的執行引擎（skill 內呼叫 `gws gmail +triage` 之類）
+- **前置：** Node.js 已裝（步驟 2）
+- **指令：**
+  ```powershell
+  npm install -g @googleworkspace/cli
+  ```
+- **成功判準：**
+  ```powershell
+  gws --version  # 應回傳 0.22.x 或更新
+  ```
+- **失敗 fallback：**
+  - npm 失敗 → 從 https://github.com/googleworkspace/cli/releases 下載 binary 手動裝
+  - PATH 找不到 `gws` → 提示重啟 PowerShell（npm global bin 需要 PATH 重載）
+- **對話模板：** 「我接下來裝 Google Workspace CLI（gws），所有 gws-* skill 都靠它運作。約需 1 分鐘。可以嗎？」
+
+### 步驟 9：`gws auth login`
+- **意圖：** 把新人的 Google Workspace 帳號 OAuth 授權給 gws CLI
+- **前置：** gws CLI 已裝（步驟 8）
+- **指令：**
+  ```powershell
+  gws auth login
+  ```
+- **成功判準：** `gws auth status` 顯示 logged in + 用戶 email
+- **常見坑：**
+  - 用戶用個人 gmail 登入而非公司帳號 → skill 跑起來會權限不足。確認用 `@dollbao.com` 帳號（或公司實際 domain）
+  - 瀏覽器沒跳出 → 提示複製終端機印出的 URL 手動開
+- **對話模板：** ⏸️ M2.3 填
+
+### 步驟 10：裝 gws skill bundle ⭐
+- **意圖：** 把 ~85 個 gws-* / recipe-* skill 安裝到 `~/.claude/skills/`（排除 10 個 persona-*）
+- **前置：** Git 已裝（步驟 3）、repo 已 clone（步驟 7）
+- **指令：**
+  ```powershell
+  & "$env:USERPROFILE\.claude\dollbao-setup\scripts\helpers\install-gws-bundle.ps1"
+  ```
+- **背後做什麼：**
+  1. 讀 `manifest/skills-lock.json` 拿 pinned commit + 95 個 skill blob_sha1
+  2. 讀 `manifest/common.json` 的 `exclude_patterns: ["persona-*"]` 過濾
+  3. `git clone googleworkspace/cli` 到 `$env:TEMP\dollbao-gws-mirror`
+  4. `git checkout <pinned_commit>`
+  5. 逐個 skill：`git hash-object` 驗 blob SHA1 vs lock → 通過則複製到 `~/.claude/skills/{name}/SKILL.md`
+  6. 已存在且 hash 一致 → skip（idempotent）
+- **支援的 flag：**
+  - `-DryRun` 只看會做什麼不動檔
+  - `-Force` 即使 hash 已對也覆蓋
+- **成功判準：** 腳本最後輸出「✨ gws skill bundle 安裝完成」+ `Test-Path "$env:USERPROFILE\.claude\skills\gws-gmail-triage\SKILL.md"`
+- **失敗 fallback：**
+  - Hash mismatch → 跑 `scripts/helpers/generate-skills-lock.ps1` 重新生 lock（表示上游動了但本 repo 沒同步）
+  - 上游 clone 失敗 → 檢查網路；若公司 firewall 擋 github.com，提示用戶聯絡 IT
+- **對話模板：** 「我接下來把約 85 個 Google Workspace skill 裝到 Claude Code。會從上游 googleworkspace/cli 用我們鎖定的 commit 抓，逐個驗 hash 才寫入。約需 2 分鐘。」
+
+### 步驟 11：裝自製 skill
+- **意圖：** 把本 repo 的 `skills/dollbao-handbook` 與 `skills/dollbao-calendar`（以及未來新增的全員 skill）複製到 `~/.claude/skills/`
+- **前置：** Repo 已 clone（步驟 7）
+- **指令：**
+  ```powershell
+  & "$env:USERPROFILE\.claude\dollbao-setup\scripts\helpers\install-dollbao-skills.ps1"
+  ```
+- **背後做什麼：**
+  1. 讀 `manifest/common.json` 的 `skills[]` 陣列
+  2. 對每個 entry：`Copy-Item` 整個 skill 資料夾到 `~/.claude/skills/{id}/`
+  3. 已存在且 SHA256 一致 → skip
+- **成功判準：** 腳本輸出 + `Test-Path "$env:USERPROFILE\.claude\skills\dollbao-handbook\SKILL.md"`
+- **失敗 fallback：** repo 缺檔 → 多半是 clone 不完整，重跑步驟 7
+- **對話模板：** 「裝逗寶自製 skill（規章查詢、逗寶曆查詢），複製 2 個檔案。30 秒。」
+
+### 步驟 12：跑 `verify-install.ps1`
+- **意圖：** 自動檢查所有工具 + skill + auth 都到位
+- **指令：**
+  ```powershell
+  & "$env:USERPROFILE\.claude\dollbao-setup\scripts\verify-install.ps1"
+  ```
+- **成功判準：** ⏸️ M2.4 補完（依 verify-install.ps1 的最終形式）
+
+### 步驟 13：5 題驗證（見 §4）
+- **意圖：** 真實對話驗證新人能用工具
+- **流程：** AI 出題 → 用戶答 → AI 評分（見 §4）
 
 ---
 
-## 3. 全員 skill 清單（步驟 10 安裝）
+## 3. 全員 skill 清單（步驟 11 安裝）
 
 | Skill | 型態 | 觸發情境 |
 |---|---|---|
@@ -70,7 +162,7 @@
 
 ---
 
-## 4. 驗證題（步驟 12）
+## 4. 驗證題（步驟 13）
 
 裝完後 AI 出以下 5 題，看用戶能不能用：
 
@@ -101,7 +193,7 @@
 ## 5. Idempotent 原則
 
 - **偵測已裝：** 用 `Get-Command {tool}` 或 `winget list --id {id}`，**不要** 重複跑安裝
-- **skill 比 hash：** 對 `~/.claude/skills/{name}/SKILL.md` 算 SHA256，比對 `manifest/skills-lock.json`，相同則 skip
+- **skill 比 hash：** `install-gws-bundle.ps1` / `install-dollbao-skills.ps1` 內建 hash 比對，已對齊則 skip
 - **auth 不重做：** `gh auth status` / `gws auth status` 顯示 OK 就 skip
 - **對話可中斷重來：** 用戶 Ctrl+C 後重貼 bootstrap prompt，AI 應從中斷點繼續而非從頭
 
@@ -112,10 +204,12 @@
 | 錯誤類型 | 處理 |
 |---|---|
 | 網路 timeout | 重試 1 次，仍失敗 → 提示用戶檢查網路後重貼 prompt |
-| winget 抓不到 package | fallback 到官方 installer URL |
+| winget 抓不到 package | fallback 到 `fallback_url`（在 `manifest/common.json`） |
 | 權限不足 | 提示用系統管理員身分開新 PowerShell |
 | `gh auth login` 沒走完 | 引導重跑，並提示用 HTTPS protocol（非 SSH） |
 | `gws auth login` 失敗 | 檢查是否為公司 Google 帳號（非個人 gmail） |
+| `npm install -g @googleworkspace/cli` 失敗 | 提示用 admin PowerShell 重跑；若 npm proxy 問題 → 設 `npm config set registry https://registry.npmjs.org/` |
+| 步驟 10 hash mismatch | lock 與上游不一致；先跑 `generate-skills-lock.ps1` 更新 lock 再重試 |
 | `bq query` 失敗（IAM） | 提示用戶聯絡 ark0720 確認群組成員資格 |
 
 詳細案例見 [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md)（M2-M4 累積）。
@@ -126,4 +220,4 @@
 
 ⏸️ Phase 1 **跳過此步驟**。
 
-Phase 2 上線時，本節會啟用：在步驟 10 後，AI 問用戶「你屬於哪個部門？」對應到 `manifest/dept-*.json` 並補裝該部門包。
+Phase 2 上線時，本節會啟用：在步驟 11 後，AI 問用戶「你屬於哪個部門？」對應到 `manifest/dept-*.json` 並補裝該部門包。

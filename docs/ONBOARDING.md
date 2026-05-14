@@ -18,7 +18,7 @@
 
 ---
 
-## Bootstrap prompt（暫定，M2 確認後鎖定）
+## Bootstrap prompt（M2 鎖定）
 
 ```
 請幫我跑逗寶新人安裝流程。請依以下步驟，每一步做完都跟我確認再做下一步：
@@ -27,10 +27,14 @@
    Node.js LTS、Git、GitHub CLI、Google Cloud SDK (含 gcloud + bq CLI)
 2. 引導我跑 `gh auth login`
 3. 用 `gh repo clone ark0720/dollbao-claude-setup ~/.claude/dollbao-setup`
-4. 把 ~/.claude/dollbao-setup/skills/ 底下所有 skill 複製到 ~/.claude/skills/
-5. 把 ~/.claude/dollbao-setup/manifest/skills-lock.json 用來安裝完整 gws skill bundle
-6. 引導我跑 `gws auth login`
-7. 最後給我 5 題驗證題，確認所有工具都裝好了
+4. 用 npm 裝 gws CLI：`npm install -g @googleworkspace/cli`
+5. 引導我跑 `gws auth login`（請務必用我的公司 Google 帳號，非個人 gmail）
+6. 跑 ~/.claude/dollbao-setup/scripts/helpers/install-gws-bundle.ps1
+   裝完整 gws skill bundle（約 85 個 skill，排除 persona-*）
+7. 跑 ~/.claude/dollbao-setup/scripts/helpers/install-dollbao-skills.ps1
+   裝逗寶自製 skill（dollbao-handbook、dollbao-calendar）
+8. 跑 ~/.claude/dollbao-setup/scripts/verify-install.ps1 自動檢查
+9. 最後給我 5 題驗證題，確認所有工具都裝好了
 
 完整安裝邏輯請參考 repo 內的 docs/INSTALL.md
 ```
