@@ -25,7 +25,7 @@
 | 2 | 裝 Node.js LTS | `winget OpenJS.NodeJS.LTS` | 2 分鐘 |
 | 3 | 裝 Git | `winget Git.Git` | 1 分鐘 |
 | 4 | 裝 GitHub CLI | `winget GitHub.cli` | 1 分鐘 |
-| 5 | 裝 Google Cloud SDK | `winget Google.CloudSDK` | 3 分鐘 |
+| 5 | 裝 Google Cloud SDK (含 gcloud + bq CLI) | `winget Google.CloudSDK` | 3 分鐘 |
 | 6 | `gh auth login` | 引導瀏覽器授權 | 1 分鐘 |
 | 7 | Clone repo | `gh repo clone ark0720/dollbao-claude-setup ~/.claude/dollbao-setup` | 30 秒 |
 | 8 | `gws auth login` | 引導瀏覽器授權 | 1 分鐘 |

@@ -31,7 +31,7 @@
     },
     {
       "id": "Google.CloudSDK",
-      "name": "Google Cloud SDK (含 bq CLI)",
+      "name": "Google Cloud SDK (含 gcloud + bq CLI)",
       "installer": "winget",
       "verify_cmd": "gcloud --version",
       "fallback_url": "https://cloud.google.com/sdk/docs/install",

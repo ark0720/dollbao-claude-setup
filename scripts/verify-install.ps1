@@ -37,8 +37,8 @@ Write-Host "【基礎工具】" -ForegroundColor Yellow
 Check-Command "node"   "Node.js"
 Check-Command "git"    "Git"
 Check-Command "gh"     "GitHub CLI"
-Check-Command "gcloud" "Google Cloud SDK"
-Check-Command "bq"     "BigQuery CLI"
+Check-Command "gcloud" "gcloud CLI (Google Cloud SDK)"
+Check-Command "bq"     "bq CLI (BigQuery, Google Cloud SDK)"
 Write-Host ""
 
 # ⏸️ M2 補：gws CLI 檢查

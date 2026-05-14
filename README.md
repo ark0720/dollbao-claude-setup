@@ -10,7 +10,7 @@
 
 | 類別 | 內容 |
 |---|---|
-| 基礎工具 | Node.js LTS、Git、GitHub CLI、Google Cloud SDK（含 bq CLI）|
+| 基礎工具 | Node.js LTS、Git、GitHub CLI、Google Cloud SDK（含 gcloud + bq CLI）|
 | Skill bundle | gws-* 完整 bundle（~93 個，排除 persona-*，由 [`googleworkspace/cli`](https://github.com/googleworkspace/cli) mirror）|
 | 自製 skill | `dollbao-handbook`（規章查詢，兩層索引型）、`dollbao-calendar`（逗寶曆 BQ 查詢型）|
 

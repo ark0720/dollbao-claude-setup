@@ -24,7 +24,7 @@
 請幫我跑逗寶新人安裝流程。請依以下步驟，每一步做完都跟我確認再做下一步：
 
 1. 確認/安裝以下工具（用 winget，若已存在就 skip）：
-   Node.js LTS、Git、GitHub CLI、Google Cloud SDK
+   Node.js LTS、Git、GitHub CLI、Google Cloud SDK (含 gcloud + bq CLI)
 2. 引導我跑 `gh auth login`
 3. 用 `gh repo clone ark0720/dollbao-claude-setup ~/.claude/dollbao-setup`
 4. 把 ~/.claude/dollbao-setup/skills/ 底下所有 skill 複製到 ~/.claude/skills/
