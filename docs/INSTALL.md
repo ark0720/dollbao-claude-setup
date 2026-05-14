@@ -34,6 +34,7 @@
 | 9 | `gws auth login` | 引導瀏覽器授權 | 1 分鐘 |
 | 10 | 裝 gws skill bundle | 跑 `~/.claude/dollbao-setup/scripts/helpers/install-gws-bundle.ps1`（依 `manifest/skills-lock.json` 拉 ~85 個非 persona-* skill 到 `~/.claude/skills/`） | 2 分鐘 |
 | 11 | 裝自製 skill | 跑 `~/.claude/dollbao-setup/scripts/helpers/install-dollbao-skills.ps1`（依 `manifest/common.json` 的 `skills[]` 複製到 `~/.claude/skills/`） | 30 秒 |
+| **11.5** | **裝逗寶共用 Claude defaults** | 跑 `~/.claude/dollbao-setup/scripts/helpers/install-claude-defaults.ps1`（把行為原則寫進 `~/.claude/CLAUDE.md`，所有 session 自動載入） | 5 秒 |
 | 12 | `verify-install.ps1` | 自動檢查所有工具 / skill 都裝好 | 30 秒 |
 | 13 | 5 題驗證 | AI 出題、用戶答 | 5 分鐘 |
 
@@ -174,6 +175,23 @@
 - **成功判準：** 腳本輸出 + `Test-Path "$env:USERPROFILE\.claude\skills\dollbao-handbook\SKILL.md"`
 - **失敗 fallback：** repo 缺檔 → 多半是 clone 不完整，重跑步驟 7
 - **對話模板：** 「裝逗寶自製 skill（規章查詢、逗寶曆查詢），複製 2 個檔案。30 秒。」
+
+### 步驟 11.5：裝逗寶共用 Claude defaults
+- **意圖：** 把公司共用的 AI 行為原則（繁中、直接動手、不要 leak secrets 等）寫進 `~/.claude/CLAUDE.md`，**所有** Claude Code session 自動載入（不限本 repo）
+- **前置：** Repo 已 clone（步驟 7）
+- **指令：**
+  ```powershell
+  & "$env:USERPROFILE\.claude\dollbao-setup\scripts\helpers\install-claude-defaults.ps1"
+  ```
+- **背後做什麼：**
+  1. 讀 `templates/claude-defaults.md`
+  2. 三種情境處理 `~/.claude/CLAUDE.md`：
+     - 不存在 → 直接寫入
+     - 存在但無 dollbao 區塊 → append 到末尾
+     - 存在且有 dollbao 區塊 → 取代 `<!-- dollbao-defaults-start ... -->` 與 `<!-- dollbao-defaults-end -->` 之間（user 其他段落不動）
+- **成功判準：** `Test-Path "$env:USERPROFILE\.claude\CLAUDE.md"` ✅ + 內含 `<!-- dollbao-defaults-start` marker
+- **失敗 fallback：** 多半是 marker 不完整（user 手動編輯壞了）→ 把舊檔備份後手動清掉 dollbao 區塊重跑
+- **對話模板：** 「我接下來把逗寶共用的 AI 行為原則寫到 `~/.claude/CLAUDE.md`，這之後你開任何 Claude Code session AI 都會自動知道用繁中回應、有 tool 就直接跑等公司預設。」
 
 ### 步驟 12：跑 `verify-install.ps1`
 - **意圖：** 自動檢查所有工具 + skill + auth 都到位

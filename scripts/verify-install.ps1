@@ -115,6 +115,27 @@ function Check-OAuthConfig {
     }
 }
 
+function Check-ClaudeDefaults {
+    # M2.8: 檢查 ~/.claude/CLAUDE.md 含逗寶 dollbao-defaults 區塊
+    $path = Join-Path $env:USERPROFILE ".claude\CLAUDE.md"
+    $script:checks++
+    if (-not (Test-Path $path)) {
+        Write-Host "  ⚠ ~/.claude/CLAUDE.md 不存在（INSTALL step 11.5 未跑過）" -ForegroundColor DarkYellow
+        Write-Host "     → 跑 install-claude-defaults.ps1 安裝" -ForegroundColor DarkYellow
+        $script:warnings += "Claude defaults: 未安裝"
+        return
+    }
+    $content = [System.IO.File]::ReadAllText($path, [System.Text.UTF8Encoding]::new($false))
+    if ($content -match "<!-- dollbao-defaults-start") {
+        $sizeKb = [Math]::Round($content.Length / 1024, 1)
+        Write-Host "  ✅ ~/.claude/CLAUDE.md 已含逗寶 defaults 區塊 (${sizeKb} KB)" -ForegroundColor Green
+    } else {
+        Write-Host "  ❌ ~/.claude/CLAUDE.md 存在但無 dollbao-defaults 區塊" -ForegroundColor Red
+        Write-Host "     → 跑 install-claude-defaults.ps1（會 append 不會覆蓋你既有內容）" -ForegroundColor DarkYellow
+        $script:errors += "Claude defaults: 缺 dollbao 區塊"
+    }
+}
+
 function Sample-Bundle-Integrity {
     param([string]$RepoRoot)
     $lockPath = Join-Path $RepoRoot "manifest\skills-lock.json"
@@ -192,6 +213,9 @@ Check-OAuthConfig
 Section "自製 skill"
 Check-SkillFile "dollbao-handbook"
 Check-SkillFile "dollbao-calendar"
+
+Section "Claude defaults (~/.claude/CLAUDE.md)"
+Check-ClaudeDefaults
 
 if (-not $Quick) {
     Section "gws skill bundle 抽樣（3 個）"
