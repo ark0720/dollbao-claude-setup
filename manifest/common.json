@@ -45,7 +45,7 @@
       "source": "googleworkspace/cli",
       "lockfile": "skills-lock.json",
       "exclude_patterns": ["persona-*"],
-      "_todo_m2": "M2 階段確認 .agents/skills-lock.json 是否仍適用，搬到 manifest/skills-lock.json"
+      "install_helper": "scripts/helpers/install-gws-bundle.ps1"
     }
   ],
   "skills": [

@@ -108,14 +108,17 @@
 {
   "version": "1",
   "source_repo": "googleworkspace/cli",
-  "source_commit": "abc1234567890abcdef...",
-  "generated_at": "2026-05-14T00:00:00Z",
-  "generator": "tool-name@version",
+  "source_commit": "a3768d0e82ad83cca2da97724e46bea4ff0e6dbd",
+  "generated_at": "2026-05-15T00:00:00Z",
+  "generator": "scripts/helpers/generate-skills-lock.ps1",
+  "_note": "blob_sha1 is git blob SHA1 (verifiable via git hash-object). manifest/common.json exclude_patterns filters persona-* at install time.",
+  "total_skills": 95,
   "skills": [
     {
       "name": "gws-gmail-triage",
       "path": "skills/gws-gmail-triage/SKILL.md",
-      "content_sha256": "abc..."
+      "blob_sha1": "641a2d114105f9ad73cc229bef6edb5e757ac36d",
+      "size": 1219
     }
   ]
 }
@@ -125,9 +128,21 @@
 |---|---|
 | `source_repo` | 上游 GitHub repo（owner/repo） |
 | `source_commit` | 上游 commit hash（**不能** 含 `HEAD`、`main` 等浮動 ref） |
-| `generated_at` | ISO 8601 timestamp |
+| `generated_at` | ISO 8601 UTC timestamp |
 | `generator` | 產生本 lock 的工具識別（記錄方便 audit） |
-| `skills[].content_sha256` | skill 內容雜湊（小寫 hex），驗證下載完整 |
+| `_note` | 給未來 maintainer 的提示，可選 |
+| `total_skills` | skills 陣列長度（含 persona-*）— sanity check 用 |
+| `skills[].name` | skill 識別字串 |
+| `skills[].path` | 在上游 repo 內的相對路徑 |
+| `skills[].blob_sha1` | git blob SHA1（同 `git hash-object SKILL.md`），跨平台穩定，可驗證 |
+| `skills[].size` | 檔案大小（bytes），sanity check 用 |
+
+**為什麼用 git blob SHA1 而非 SHA256：**
+- 上游 GitHub API 直接回傳這個值，產 lock 時不必本地計算
+- 安裝者本機 `git clone` 後可用 `git hash-object` 直接驗證（git 必裝項目）
+- 跨平台一致（git 內部處理 line ending）— SHA256 of raw bytes 會因 CRLF/LF 不同而 mismatch
+
+**重新生成：** 用 `scripts/helpers/generate-skills-lock.ps1`（M2 補完）。
 
 ---
 
