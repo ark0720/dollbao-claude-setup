@@ -81,40 +81,37 @@ function Check-SkillFile {
 }
 
 function Check-OAuthConfig {
-    param([string]$RepoRoot)
-    # 兩個位置都檢查：repo 內的 source 與新人本機已複製的 dest
-    $sourceJson = Join-Path $RepoRoot "config\gws-client-secret.json"
+    # M2.7 起：credentials 從 Secret Manager 拉，repo 內不再有 source 檔。
+    # 只檢查本機 ~/.config/gws/client_secret.json 是否到位 + 格式合法。
     $destJson = Join-Path $env:USERPROFILE ".config\gws\client_secret.json"
 
-    # 1. repo 內 source — 必須存在且不是 placeholder
-    $script:checks++
-    if (-not (Test-Path $sourceJson)) {
-        Write-Host "  ❌ repo config 缺檔 ($sourceJson)" -ForegroundColor Red
-        $script:errors += "OAuth config: repo 缺檔"
-        return
-    }
-    $sourceContent = [System.IO.File]::ReadAllText($sourceJson, [System.Text.UTF8Encoding]::new($false))
-    if ($sourceContent -match "TODO_REPLACE") {
-        Write-Host "  ⚠ repo 內 config/gws-client-secret.json 仍是 placeholder" -ForegroundColor DarkYellow
-        Write-Host "     → ark0720 需依 config/README.md 在 GCP Console 建 OAuth client 後填入真值" -ForegroundColor DarkYellow
-        $script:warnings += "OAuth config: placeholder 未替換"
-    } else {
-        Write-Host "  ✅ repo config/gws-client-secret.json 已填真實 OAuth client" -ForegroundColor Green
-    }
-
-    # 2. 本機 dest — 新人裝完應該存在；ark0720 本機可有可無
     $script:checks++
     if (-not (Test-Path $destJson)) {
         Write-Host "  ⚠ 本機 ~/.config/gws/client_secret.json 不存在（INSTALL step 8.5 未跑過）" -ForegroundColor DarkYellow
-        $script:warnings += "OAuth config: 本機未複製（如尚未跑安裝劇本則正常）"
+        Write-Host "     → 若已 gcloud auth login（dollbao.com.tw 帳號），跑：" -ForegroundColor DarkYellow
+        Write-Host "       gcloud secrets versions access latest --secret=gws-oauth-client --project=dollbao-gws-cli > $destJson" -ForegroundColor DarkYellow
+        $script:warnings += "OAuth config: 本機未拉取（如尚未跑安裝劇本則正常）"
         return
     }
     $destContent = [System.IO.File]::ReadAllText($destJson, [System.Text.UTF8Encoding]::new($false))
-    if ($destContent -match "TODO_REPLACE") {
-        Write-Host "  ❌ 本機 client_secret.json 仍是 placeholder（gws auth login 必失敗）" -ForegroundColor Red
+    if ($destContent -match "TODO_REPLACE|placeholder") {
+        Write-Host "  ❌ 本機 client_secret.json 看起來是舊版 placeholder（gws auth login 必失敗）" -ForegroundColor Red
+        Write-Host "     → 重跑 step 8.5 從 Secret Manager 拉新版" -ForegroundColor DarkYellow
         $script:errors += "OAuth config: 本機是 placeholder"
-    } else {
-        Write-Host "  ✅ 本機 client_secret.json 已配置" -ForegroundColor Green
+        return
+    }
+    try {
+        $parsed = $destContent | ConvertFrom-Json
+        if (-not $parsed.installed.client_id -or -not $parsed.installed.client_secret) {
+            Write-Host "  ❌ 本機 client_secret.json 格式不正常（缺 installed.client_id / .client_secret）" -ForegroundColor Red
+            $script:errors += "OAuth config: 格式錯誤"
+            return
+        }
+        $clientIdShort = $parsed.installed.client_id.Substring(0, [Math]::Min(12, $parsed.installed.client_id.Length))
+        Write-Host "  ✅ 本機 client_secret.json 已配置（client_id: ${clientIdShort}...）" -ForegroundColor Green
+    } catch {
+        Write-Host "  ❌ 本機 client_secret.json 不是合法 JSON" -ForegroundColor Red
+        $script:errors += "OAuth config: JSON 解析失敗"
     }
 }
 
@@ -189,8 +186,8 @@ Check-Auth -Cmd "gh"     -ArgList @("auth","status") -Name "GitHub CLI 已 auth 
 Check-Auth -Cmd "gws"    -ArgList @("auth","status") -Name "gws CLI 已 auth"                  -SuccessPattern "(?i)(logged in|authenticated|active|email)"
 Check-Auth -Cmd "gcloud" -ArgList @("auth","list")   -Name "gcloud CLI 已 auth (warn-only)"   -SuccessPattern "ACTIVE" -WarnOnly
 
-Section "OAuth client config（gws）"
-Check-OAuthConfig -RepoRoot $repoRoot
+Section "OAuth client config（gws，從 Secret Manager 拉到本機）"
+Check-OAuthConfig
 
 Section "自製 skill"
 Check-SkillFile "dollbao-handbook"
