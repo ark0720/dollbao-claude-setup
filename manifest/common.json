@@ -57,8 +57,7 @@
     },
     {
       "id": "dollbao-calendar",
-      "path": "skills/dollbao-calendar",
-      "_todo_m3": "M3 階段填入 BQ schema（由 M2.5 ark0720 提供）+ 範例 SQL"
+      "path": "skills/dollbao-calendar"
     }
   ]
 }

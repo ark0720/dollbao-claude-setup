@@ -212,7 +212,7 @@
 | Skill | 型態 | 觸發情境 |
 |---|---|---|
 | `dollbao-handbook` | 兩層索引型 | 公司規章查詢（請假、考核、Drive 規則、共用圖檔規則…） |
-| `dollbao-calendar` | BQ 查詢型 | 逗寶曆（會計年度、第幾週、檔期、節氣特賣…） |
+| `dollbao-calendar` | BQ 查詢型 | 逗寶報告歷（RY/RQ/RM/RW 編碼、會計年度起訖、週月反查、YoY 比較規則…） |
 
 新增條目時，記得**先讀 MAINTAINER.md §4 判斷歸屬**（個人 / 草稿 / 全員 / 部門），確認是全員 skill 才走 §7 SOP 同步 `manifest/common.json`。
 
@@ -229,8 +229,8 @@
 
 2. **「今天是逗寶曆第幾週？下個檔期什麼時候？」**
    - 期待觸發：`dollbao-calendar`
-   - 期待路徑：BQ query → 結果 → 人話回答
-   - 評分：跑了 bq query +1 / 結果合理 +1
+   - 期待路徑：BQ query 拿週次 → 第二問誠實回答「檔期不在 BQ，請讀規章 Doc」
+   - 評分：跑了 bq query +1 / 用 RY{YY}W{WW} 格式輸出 +1 / 檔期部分 fallback 到 Doc +1
 
 3. **「請幫我看今天 Google Calendar 行程」**
    - 期待觸發：`gws-calendar-agenda`
