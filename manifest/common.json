@@ -53,7 +53,7 @@
     {
       "id": "dollbao-handbook",
       "path": "skills/dollbao-handbook",
-      "_todo_m3": "M3 階段填入 digest（由 M2.5 獨立 session 預先產生）+ spreadsheet fallback 邏輯"
+      "_digest_built": "2026-05-15 預建 57 份規章 digest（56 份成功讀取、1 份 Doc 404）。重跑 SOP 見 docs/MAINTAINER.md §9。"
     },
     {
       "id": "dollbao-calendar",
