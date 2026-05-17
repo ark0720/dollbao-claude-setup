@@ -15,7 +15,9 @@
 
 ## 公司資源（觸發詞會自動載對應 skill）
 
-- 行事曆 / 檔期 / 會計週期 → `dollbao-calendar` skill
+- **業績相關報告 / 分析、年度計畫，或提到「報告曆 / 逗寶曆 / 報告週 / 報告月 / 報告年」** → `dollbao-calendar` skill
+  - 規則：公司除財會以外的內部報告**一律用報告曆**（RY/RQ/RM/RW），不是西元曆。年度業績、KPI、檔期分析、會議報表、戰略計畫都歸這類
+  - 財會 / 法規申報 / 薪資 / 對外文件才用西元日期
 - 完整 Workspace 操作 → gws CLI + 已裝的 `gws-*` / `recipe-*` skill bundle
 
 ## 不可在 commit 訊息或公開 channel 出現的東西
