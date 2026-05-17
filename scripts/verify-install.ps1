@@ -196,14 +196,12 @@ Write-Host "Repo: $repoRoot"
 Section "基礎工具"
 Check-Command "node"   "Node.js"
 Check-Command "git"    "Git"
-Check-Command "gh"     "GitHub CLI"
 Check-Command "gcloud" "gcloud CLI (Google Cloud SDK)"
 Check-Command "bq"     "bq CLI (BigQuery, Google Cloud SDK)"
 Check-Command "npm"    "npm (隨 Node)"
 Check-Command "gws"    "gws CLI (Google Workspace CLI)"
 
 Section "Auth 狀態"
-Check-Auth -Cmd "gh"     -ArgList @("auth","status") -Name "GitHub CLI 已 auth (warn-only)"   -SuccessPattern "Logged in" -WarnOnly
 Check-Auth -Cmd "gws"    -ArgList @("auth","status") -Name "gws CLI 已 auth"                  -SuccessPattern "(?i)(logged in|authenticated|active|email)"
 Check-Auth -Cmd "gcloud" -ArgList @("auth","list")   -Name "gcloud CLI 已 auth (warn-only)"   -SuccessPattern "ACTIVE" -WarnOnly
 

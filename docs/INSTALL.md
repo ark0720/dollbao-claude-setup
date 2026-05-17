@@ -24,10 +24,8 @@
 | 1 | 環境檢查 | PowerShell 偵測 Windows / winget / 網路 | 30 秒 |
 | 2 | 裝 Node.js LTS | `winget install OpenJS.NodeJS.LTS` | 2 分鐘 |
 | 3 | 裝 Git | `winget install Git.Git` | 1 分鐘 |
-| 4 | 裝 GitHub CLI（可選） | `winget install GitHub.cli` | 1 分鐘 |
 | 5 | 裝 Google Cloud SDK (含 gcloud + bq CLI) | `winget install Google.CloudSDK` | 3 分鐘 |
 | **5.5** | **`gcloud auth login`** | 引導瀏覽器授權（用公司 dollbao.com.tw 帳號）| 1 分鐘 |
-| ~~6~~ | ~~`gh auth login`~~ | **跳過** — repo 已 public，clone 不需 auth | — |
 | 7 | Clone setup repo | `git clone https://github.com/ark0720/dollbao-claude-setup.git $env:USERPROFILE\.claude\dollbao-setup` | 30 秒 |
 | **8** | **裝 gws CLI** | `npm install -g @googleworkspace/cli` | 1 分鐘 |
 | **8.5** | **取 gws OAuth client** | `gcloud secrets versions access latest --secret=gws-oauth-client --project=dollbao-gws-cli` → `~/.config/gws/client_secret.json` | 5 秒 |
@@ -51,7 +49,7 @@
 - **失敗 fallback：** ⏸️ M2.3 填
 - **對話模板：** ⏸️ M2.3 填
 
-### 步驟 2-5：裝基礎工具（Node / Git / gh / gcloud）
+### 步驟 2-5：裝基礎工具（Node / Git / gcloud）
 - **意圖：** 後續工具的前置依賴
 - **共用模式：**
   1. `Get-Command {cmd}` 偵測 — 已有 → skip + 告知 user「已裝 (v...)」
@@ -70,11 +68,6 @@
   - 用個人 gmail 登入 → 提醒 user 切換帳號（Secret Manager IAM 限定 `domain:dollbao.com.tw`）
   - 瀏覽器沒跳出 → 提示複製終端機印出的 URL 手動開
 - **對話模板：** 「我接下來引導你登入 gcloud。請務必用你的 dollbao.com.tw 公司帳號（不是個人 gmail），否則後續取不到公司共用的設定。」
-
-### 步驟 6：~~`gh auth login`~~（已跳過）
-- **本步驟跳過。** `dollbao-claude-setup` repo 已設為 public，clone 不需要 GitHub 帳號或 auth
-- gh CLI 本身仍裝（步驟 4），但只有 ark0720 自己日後維護 repo 時才用得到
-- 如果 user 主動問起或希望也順便 auth（例如他自己也想用 gh CLI 做別的事），AI 才需引導 `gh auth login`
 
 ### 步驟 7：Clone setup repo
 - **意圖：** 把本 repo 拉到 `~/.claude/dollbao-setup/`
@@ -249,7 +242,7 @@
 
 - **偵測已裝：** 用 `Get-Command {tool}` 或 `winget list --id {id}`，**不要** 重複跑安裝
 - **skill 比 hash：** `install-gws-bundle.ps1` / `install-dollbao-skills.ps1` 內建 hash 比對，已對齊則 skip
-- **auth 不重做：** `gh auth status` / `gws auth status` 顯示 OK 就 skip
+- **auth 不重做：** `gws auth status` 顯示 OK 就 skip
 - **對話可中斷重來：** 用戶 Ctrl+C 後重貼 bootstrap prompt，AI 應從中斷點繼續而非從頭
 
 ---

@@ -25,7 +25,7 @@
 請依以下步驟，每一步做完都跟我確認再做下一步：
 
 1. 確認/安裝以下工具（用 winget，若已存在就 skip）：
-   Node.js LTS、Git、GitHub CLI（可選）、Google Cloud SDK (含 gcloud + bq CLI)
+   Node.js LTS、Git、Google Cloud SDK (含 gcloud + bq CLI)
 2. 引導我跑 `gcloud auth login`（請務必用我的公司 dollbao.com.tw 帳號，
    不是個人 gmail，否則後續無法從 GCP 拉取共用設定）
 3. 用 git clone 把 setup repo 拉到我家目錄：

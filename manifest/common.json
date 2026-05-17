@@ -22,15 +22,6 @@
       "_todo_m2": "M2 確認 winget id"
     },
     {
-      "id": "GitHub.cli",
-      "name": "GitHub CLI",
-      "installer": "winget",
-      "verify_cmd": "gh --version",
-      "fallback_url": "https://cli.github.com/",
-      "required": false,
-      "_note": "repo 已 public，新人不需 gh auth 就能 clone。gh CLI 仍裝（ark0720 自己日後維護用），但 required: false 表示沒裝也能跑完 bootstrap。"
-    },
-    {
       "id": "Google.CloudSDK",
       "name": "Google Cloud SDK (含 gcloud + bq CLI)",
       "installer": "winget",
