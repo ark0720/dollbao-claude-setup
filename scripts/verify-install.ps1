@@ -211,7 +211,6 @@ Section "OAuth client config（gws，從 Secret Manager 拉到本機）"
 Check-OAuthConfig
 
 Section "自製 skill"
-Check-SkillFile "dollbao-handbook"
 Check-SkillFile "dollbao-calendar"
 
 Section "Claude defaults (~/.claude/CLAUDE.md)"
