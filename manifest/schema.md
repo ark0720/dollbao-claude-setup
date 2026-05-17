@@ -30,10 +30,6 @@
   ],
   "skills": [
     {
-      "id": "dollbao-handbook",
-      "path": "skills/dollbao-handbook"
-    },
-    {
       "id": "dollbao-calendar",
       "path": "skills/dollbao-calendar"
     }

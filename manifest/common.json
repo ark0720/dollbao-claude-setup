@@ -51,11 +51,6 @@
   ],
   "skills": [
     {
-      "id": "dollbao-handbook",
-      "path": "skills/dollbao-handbook",
-      "_todo_m3": "M3 階段填入 digest（由 M2.5 獨立 session 預先產生）+ spreadsheet fallback 邏輯"
-    },
-    {
       "id": "dollbao-calendar",
       "path": "skills/dollbao-calendar"
     }

@@ -38,7 +38,7 @@
 7. 跑 ~/.claude/dollbao-setup/scripts/helpers/install-gws-bundle.ps1
    裝完整 gws skill bundle（約 85 個 skill，排除 persona-*）
 8. 跑 ~/.claude/dollbao-setup/scripts/helpers/install-dollbao-skills.ps1
-   裝逗寶自製 skill（dollbao-handbook、dollbao-calendar）
+   裝逗寶自製 skill（dollbao-calendar）
 9. 跑 ~/.claude/dollbao-setup/scripts/helpers/install-claude-defaults.ps1
    裝逗寶共用 Claude defaults（~/.claude/CLAUDE.md，所有 Claude Code session
    自動載入：繁中預設、有 tool 就直接跑、引用對應 skill、不 leak secret）

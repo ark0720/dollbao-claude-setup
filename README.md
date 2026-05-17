@@ -12,7 +12,7 @@
 |---|---|
 | 基礎工具 | Node.js LTS、Git、GitHub CLI、Google Cloud SDK（含 gcloud + bq CLI）|
 | Skill bundle | gws-* 完整 bundle（~93 個，排除 persona-*，由 [`googleworkspace/cli`](https://github.com/googleworkspace/cli) mirror）|
-| 自製 skill | `dollbao-handbook`（規章查詢，兩層索引型）、`dollbao-calendar`（逗寶曆 BQ 查詢型）|
+| 自製 skill | `dollbao-calendar`（逗寶曆 BQ 查詢型）|
 
 ⏸️ Phase 2 部門包（行銷業務單位 / 會計部）的擴充點已在骨架預留，未來新增**不需重構** repo 結構。
 
@@ -33,7 +33,6 @@ dollbao-claude-setup/
 │   ├── skills-lock.json       # gws bundle 鎖版（commit + content hash）
 │   └── schema.md              # manifest 結構規格
 ├── skills/
-│   ├── dollbao-handbook/      # 兩層索引型
 │   └── dollbao-calendar/      # BQ 查詢型
 ├── scripts/
 │   ├── verify-install.ps1     # 安裝完整性檢查
@@ -52,7 +51,6 @@ dollbao-claude-setup/
 |---|---|
 | 新增全員 skill | 「幫我加一個叫『X』的全員 skill」 |
 | 新增部門包（Phase 2） | 「開行銷業務部的安裝包，要包含 Windsor MCP、X、Y」 |
-| 規章 digest 過期 | 「規章 Doc 有更新，幫我重新生成 dollbao-handbook 的 digest」 |
 | 逗寶曆 BQ schema 變動 | 「逗寶曆 table 加了 holiday_type 欄位，幫我更新 skill」 |
 | gws bundle 更新 | 「上游 googleworkspace/cli 有更新，幫我同步」 |
 

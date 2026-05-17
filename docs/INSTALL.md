@@ -162,7 +162,7 @@
 - **對話模板：** 「我接下來把約 85 個 Google Workspace skill 裝到 Claude Code。會從上游 googleworkspace/cli 用我們鎖定的 commit 抓，逐個驗 hash 才寫入。約需 2 分鐘。」
 
 ### 步驟 11：裝自製 skill
-- **意圖：** 把本 repo 的 `skills/dollbao-handbook` 與 `skills/dollbao-calendar`（以及未來新增的全員 skill）複製到 `~/.claude/skills/`
+- **意圖：** 把本 repo 的 `skills/dollbao-calendar`（以及未來新增的全員 skill）複製到 `~/.claude/skills/`
 - **前置：** Repo 已 clone（步驟 7）
 - **指令：**
   ```powershell
@@ -172,9 +172,9 @@
   1. 讀 `manifest/common.json` 的 `skills[]` 陣列
   2. 對每個 entry：`Copy-Item` 整個 skill 資料夾到 `~/.claude/skills/{id}/`
   3. 已存在且 SHA256 一致 → skip
-- **成功判準：** 腳本輸出 + `Test-Path "$env:USERPROFILE\.claude\skills\dollbao-handbook\SKILL.md"`
+- **成功判準：** 腳本輸出 + `Test-Path "$env:USERPROFILE\.claude\skills\dollbao-calendar\SKILL.md"`
 - **失敗 fallback：** repo 缺檔 → 多半是 clone 不完整，重跑步驟 7
-- **對話模板：** 「裝逗寶自製 skill（規章查詢、逗寶曆查詢），複製 2 個檔案。30 秒。」
+- **對話模板：** 「裝逗寶自製 skill（逗寶曆查詢），複製 1 個檔案。30 秒。」
 
 ### 步驟 11.5：裝逗寶共用 Claude defaults
 - **意圖：** 把公司共用的 AI 行為原則（繁中、直接動手、不要 leak secrets 等）寫進 `~/.claude/CLAUDE.md`，**所有** Claude Code session 自動載入（不限本 repo）
@@ -211,7 +211,6 @@
 
 | Skill | 型態 | 觸發情境 |
 |---|---|---|
-| `dollbao-handbook` | 兩層索引型 | 公司規章查詢（請假、考核、Drive 規則、共用圖檔規則…） |
 | `dollbao-calendar` | BQ 查詢型 | 逗寶報告歷（RY/RQ/RM/RW 編碼、會計年度起訖、週月反查、YoY 比較規則…） |
 
 新增條目時，記得**先讀 MAINTAINER.md §4 判斷歸屬**（個人 / 草稿 / 全員 / 部門），確認是全員 skill 才走 §7 SOP 同步 `manifest/common.json`。
@@ -222,10 +221,10 @@
 
 裝完後 AI 出以下 5 題，看用戶能不能用：
 
-1. **「我要上傳新的共用圖檔，命名規則和放置位置是？」**
-   - 期待觸發：`dollbao-handbook`
-   - 期待路徑：digest → 定位「共用圖檔建立規則」Doc → 讀完給出具體規則
-   - 評分：能引用 Doc 具體章節 +1 / 給出位置 +1
+1. **「今天是逗寶曆第幾週？」**
+   - 期待觸發：`dollbao-calendar`
+   - 期待路徑：跑 BQ query 查 `dollbao-data-center.Ref.reportYearMonthWeek` → 用 RY{YY}W{WW} 格式回答
+   - 評分：跑了 bq query +1 / 格式正確 +1 / 失敗時提示 `gcloud auth login` +1
 
 2. **「今天是逗寶曆第幾週？下個檔期什麼時候？」**
    - 期待觸發：`dollbao-calendar`

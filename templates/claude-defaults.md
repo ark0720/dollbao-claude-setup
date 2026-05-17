@@ -15,7 +15,6 @@
 
 ## 公司資源（觸發詞會自動載對應 skill）
 
-- 規章 / SOP 問題 → `dollbao-handbook` skill
 - 行事曆 / 檔期 / 會計週期 → `dollbao-calendar` skill
 - 完整 Workspace 操作 → gws CLI + 已裝的 `gws-*` / `recipe-*` skill bundle
 
