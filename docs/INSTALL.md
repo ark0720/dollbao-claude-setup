@@ -14,6 +14,7 @@
 4. **Idempotent** — 已裝的工具用 `Get-Command` 偵測到就 skip 並告知用戶「Node.js 已裝（v20.x），跳過此步驟」
 5. **避免假設工程背景** — 對非工程同事用「桌面、檔案總管」等日常詞彙，不用「shell、stdout、env var」
 6. **完成一個 milestone 後給進度條** — 「目前進度 3/13」
+7. **失敗時優先自救** — **公司沒有 IT 部門**，所有「找 IT」最後都會繞回 ark0720（他一個人扛全公司）。所以遇錯先把本文件列的自救步驟跑完（重試、診斷網路、檢查帳號、查 log、改 config）。**只有自救無解的硬擋**（IAM 沒設、Secret 不存在、Windows 物理太舊、公司 firewall 白名單）才回報 ark0720。回報時要附：(a) 完整錯誤訊息原文；(b) 已嘗試過的自救步驟與其結果；(c) 用戶當前帳號 / 環境的關鍵資訊。**不要動不動就丟「請聯絡 IT」三個字給用戶。**
 
 ---
 
@@ -62,11 +63,30 @@
   - `$os.BuildNumber` ≥ 17763（Win10 1809）或 ≥ 22000（Win11）
   - `winget --version` 回傳 v1.6 或更新
   - 兩個 `Test-NetConnection` 都 `True`
-- **失敗 fallback：**
-  - Windows 太舊（< 17763）→ winget 不支援，請 user 找 IT 升級系統
-  - winget 不存在 → 提示從 Microsoft Store 裝「App Installer」，或下載 `https://github.com/microsoft/winget-cli/releases/latest`
-  - winget source 連不通 → 多半是公司 proxy/firewall，請 user 聯絡 IT
-  - github 連不通 → 同上；步驟 7 `git clone` 也會失敗
+- **失敗 fallback（自救優先，§0.7）：**
+  - **Windows 太舊（< 17763）：**
+    1. 引導 user 開「設定 > Windows Update > 檢查更新」自動升級
+    2. 若 update 卡住，跑 `Get-WindowsUpdateLog` 看 log
+    3. 重試一次。三輪仍卡 < 17763 → 回報 ark0720（可能要重灌系統）
+  - **winget 不存在：**
+    1. 先試重新註冊 App Installer：
+       ```powershell
+       Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
+       ```
+    2. 不行 → 下載最新 .msixbundle 安裝：
+       ```powershell
+       $tmp = "$env:TEMP\winget.msixbundle"
+       Invoke-WebRequest -Uri "https://aka.ms/getwinget" -OutFile $tmp
+       Add-AppxPackage -Path $tmp
+       ```
+    3. 都失敗 → 收齊錯誤回報 ark0720
+  - **winget source / github 連不通：**
+    1. `Get-NetConnectionProfile` 看當前網路（公司 / VPN / 家用）
+    2. `netsh winhttp show proxy` 看系統 proxy 設定；`$env:HTTPS_PROXY`、`$env:HTTP_PROXY`
+    3. `Resolve-DnsName github.com -Type A` 看 DNS 是否解得到
+    4. 有 VPN → 先 disconnect 再 reconnect 重試
+    5. `Test-NetConnection github.com -Port 443 -InformationLevel Detailed` 看是 DNS 死還是 TLS 死
+    6. 自救無解（DNS 通但 443 連不上、或公司硬擋）→ 把上述診斷輸出整理回報 ark0720（多半要開 firewall 白名單）
 - **對話模板：** 「我先幫你檢查環境（Windows 版本、winget 是否可用、網路能不能連到 winget 跟 GitHub）。約 30 秒。」
 
 ### 步驟 2-5：裝基礎工具（Node / Git / gcloud）
@@ -98,18 +118,24 @@
 - **前置：** Google Cloud SDK 已裝（步驟 5）
 - **指令：** `gcloud auth login`
 - **成功判準：** `gcloud auth list --filter=status:ACTIVE --format="value(account)"` 回傳 `xxx@dollbao.com.tw`
-- **失敗 fallback：**
-  - 用個人 gmail 登入 → 提醒 user 切換帳號（Secret Manager IAM 限定 `domain:dollbao.com.tw`）
-  - 瀏覽器沒跳出 → 提示複製終端機印出的 URL 手動開
+- **失敗 fallback（自救優先，§0.7）：**
+  - **用個人 gmail 登入：** AI 直接跑 `gcloud auth revoke --all` 清掉，再引導重做 `gcloud auth login` 並提醒選公司帳號（不用回報 ark0720）
+  - **瀏覽器沒跳出：** AI 用 `gcloud auth login --no-launch-browser` 改成終端機印 URL，請 user 複製到瀏覽器手動開（不用回報 ark0720）
+  - **登入後 `gcloud auth list` 仍空：** 跑 `gcloud config list` 看 active config 是否壞掉；`gcloud config configurations list` 看有沒有多個 config 衝突，必要時 `gcloud config configurations activate default`
 - **對話模板：** 「我接下來引導你登入 gcloud。請務必用你的 dollbao.com.tw 公司帳號（不是個人 gmail），否則後續取不到公司共用的設定。」
 
 ### 步驟 7：Clone setup repo
 - **意圖：** 把本 repo 拉到 `~/.claude/dollbao-setup/`
 - **指令：** `git clone https://github.com/ark0720/dollbao-claude-setup.git "$env:USERPROFILE\.claude\dollbao-setup"`
 - **成功判準：** `Test-Path "$env:USERPROFILE\.claude\dollbao-setup\manifest\common.json"`
-- **失敗 fallback：**
-  - clone 失敗 → 多半是網路擋 github.com，提示 user 聯絡 IT
-  - 目標資料夾已存在 → AI 改跑 `git -C "$env:USERPROFILE\.claude\dollbao-setup" pull` 更新
+- **失敗 fallback（自救優先，§0.7）：**
+  - **clone 失敗（網路）：** AI 先自診
+    1. `Test-NetConnection github.com -Port 443 -InformationLevel Detailed`
+    2. 試 `git config --global http.postBuffer 524288000` 解大檔卡住
+    3. 試 `git -c http.sslVerify=false clone ...` 排除憑證問題（成功的話事後再開回 sslVerify）
+    4. 自救無解 → 收齊錯誤訊息 + 上述診斷結果回報 ark0720（多半要開公司 firewall 白名單）
+  - **目標資料夾已存在：** AI 直接改跑 `git -C "$env:USERPROFILE\.claude\dollbao-setup" pull` 更新（不用回報）
+  - **clone 失敗（權限）：** repo 是 public 應該不會發生；若發生先檢查 `git config --list` 看是不是被誤設了 `http.extraheader` 帶錯 token
 
 ### 步驟 8：裝 gws CLI
 - **意圖：** gws CLI 是所有 gws-* / recipe-* skill 的執行引擎（skill 內呼叫 `gws gmail +triage` 之類）
@@ -122,9 +148,18 @@
   ```powershell
   gws --version  # 應回傳 0.22.x 或更新
   ```
-- **失敗 fallback：**
-  - npm 失敗 → 從 https://github.com/googleworkspace/cli/releases 下載 binary 手動裝
-  - PATH 找不到 `gws` → 提示重啟 PowerShell（npm global bin 需要 PATH 重載）
+- **失敗 fallback（自救優先，§0.7）：**
+  - **npm install 失敗：** AI 依序試
+    1. 確認 Node 真的裝起來：`node --version` + `npm --version` 都要過
+    2. `npm cache clean --force` 後重試
+    3. `npm config set registry https://registry.npmjs.org/`（解 proxy 問題）後重試
+    4. 用管理員 PowerShell（`Start-Process powershell -Verb RunAs`）重試
+    5. 都失敗 → 從 https://github.com/googleworkspace/cli/releases 下載 binary 手動裝
+    6. 連 release 頁也連不上 → 收齊錯誤回報 ark0720（網路硬擋）
+  - **PATH 找不到 `gws`：** AI 直接重整 PATH 不用重啟 PowerShell：
+    ```powershell
+    $env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")
+    ```
 - **對話模板：** 「我接下來裝 Google Workspace CLI（gws），所有 gws-* skill 都靠它運作。約需 1 分鐘。可以嗎？」
 
 ### 步驟 8.5：從 Secret Manager 取 gws OAuth client
@@ -139,17 +174,24 @@
     --project=dollbao-gws-cli 2>&1
   if ($LASTEXITCODE -ne 0) {
       Write-Error "拉取 secret 失敗：$secretJson"
-      throw "請確認步驟 5.5 用 dollbao.com.tw 帳號登入，或聯絡 ark0720 確認 secret 已上傳"
+      throw "拉取失敗，依錯誤碼跑 fallback：PERMISSION_DENIED → 換 dollbao.com.tw 帳號；NOT_FOUND → 跑 gcloud secrets list 自診斷後再回報 ark0720"
   }
   $secretJson | Set-Content -Path (Join-Path $gwsCfg "client_secret.json") -Encoding utf8 -NoNewline
   ```
 - **成功判準：**
   - `Test-Path "$env:USERPROFILE\.config\gws\client_secret.json"` ✅
   - 檔案不為空且含合法 JSON（用 `Get-Content ... | ConvertFrom-Json | Select -ExpandProperty installed` 驗證有 `client_id` / `client_secret` 欄位）
-- **失敗 fallback：**
-  - `PERMISSION_DENIED` → 使用者不是 dollbao.com.tw 帳號，或 IAM 沒給好；要求 user 跑 `gcloud auth list` 確認帳號
-  - `NOT_FOUND` → ark0720 還沒上傳 secret，請 user 聯絡 ark0720
-  - 其他 → 把錯誤訊息原文貼回，請 user 找 ark0720
+- **失敗 fallback（自救優先，§0.7）：**
+  - **`PERMISSION_DENIED`：** AI 依序自診
+    1. `gcloud auth list --format="value(account)"` 看當前 active account
+    2. 不是 `*@dollbao.com.tw` → `gcloud auth login` 換帳號重試（自救完）
+    3. 已是 dollbao.com.tw → 跑 `gcloud secrets list --project=dollbao-gws-cli` 看自己有沒有 `secretmanager.secrets.list` 權限
+    4. 連 list 都不行 → 回報 ark0720：「帳號 `xxx@dollbao.com.tw` 沒拿到 `gws-oauth-client` 的 secretmanager.secretAccessor 角色，請加進 IAM」
+  - **`NOT_FOUND`：** AI 先確認 secret 真的不存在
+    1. `gcloud secrets list --project=dollbao-gws-cli --filter="name~gws-oauth-client"` — 若這個指令本身 PERMISSION_DENIED → 走上面 PERMISSION_DENIED 流程
+    2. 若回空 → secret 真的不存在，回報 ark0720：「請在 GCP project `dollbao-gws-cli` 建 secret `gws-oauth-client`（步驟見 `config/README.md`）」
+    3. 若 secret 在但版本是 disabled → `gcloud secrets versions list --secret=gws-oauth-client --project=dollbao-gws-cli` 看版本狀態，回報 ark0720
+  - **其他錯誤：** 先把錯誤訊息與 `gcloud --version`、`gcloud auth list`、`gcloud config list` 三項輸出整理好，再回報 ark0720
 - **對話模板：** 「我接下來從公司 GCP 的 Secret Manager 拉 gws CLI 要用的 OAuth credentials。這只會發生一次，下一步 `gws auth login` 才是綁定你的個人 Workspace 帳號。」
 
 ### 步驟 9：`gws auth login`
@@ -183,9 +225,9 @@
   - `-DryRun` 只看會做什麼不動檔
   - `-Force` 即使 hash 已對也覆蓋
 - **成功判準：** 腳本最後輸出「✨ gws skill bundle 安裝完成」+ `Test-Path "$env:USERPROFILE\.claude\skills\gws-gmail-triage\SKILL.md"`
-- **失敗 fallback：**
-  - Hash mismatch → 跑 `scripts/helpers/generate-skills-lock.ps1` 重新生 lock（表示上游動了但本 repo 沒同步）
-  - 上游 clone 失敗 → 檢查網路；若公司 firewall 擋 github.com，提示用戶聯絡 IT
+- **失敗 fallback（自救優先，§0.7）：**
+  - **Hash mismatch：** AI 直接跑 `scripts/helpers/generate-skills-lock.ps1` 重新生 lock，再跑一次 install-gws-bundle.ps1（自救完）。連續兩次仍 mismatch 才回報 ark0720
+  - **上游 clone 失敗（網路）：** 跟步驟 7 相同自救流程（Test-NetConnection / proxy / DNS / VPN）。自救無解才回報 ark0720
 - **對話模板：** 「我接下來把約 85 個 Google Workspace skill 裝到 Claude Code。會從上游 googleworkspace/cli 用我們鎖定的 commit 抓，逐個驗 hash 才寫入。約需 2 分鐘。」
 
 ### 步驟 11：裝自製 skill
@@ -283,19 +325,23 @@
 
 ## 6. 失敗處理通則
 
-| 錯誤類型 | 處理 |
-|---|---|
-| 網路 timeout | 重試 1 次，仍失敗 → 提示用戶檢查網路後重貼 prompt |
-| winget 抓不到 package | fallback 到 `fallback_url`（在 `manifest/common.json`） |
-| 權限不足 | 提示用系統管理員身分開新 PowerShell |
-| `git clone` 失敗（步驟 7） | 多半是公司 firewall 擋 github.com，提示聯絡 IT |
-| `gws auth login` 失敗 | (a) 檢查 step 8.5 是否成功拉到 client_secret.json；(b) 檢查是否為公司 Google 帳號（非個人 gmail） |
-| step 8.5 `PERMISSION_DENIED` | user 不是 dollbao.com.tw 帳號（用個人 gmail 跑了 step 5.5）— 跑 `gcloud auth login` 換正確帳號 |
-| step 8.5 `NOT_FOUND` | ark0720 還沒在 GCP 建 Secret `gws-oauth-client`，請聯絡他完成 `config/README.md` 內的設定 |
-| step 5.5 `gcloud auth login` 用錯帳號 | 跑 `gcloud auth revoke --all` 後重做 step 5.5 |
-| `npm install -g @googleworkspace/cli` 失敗 | 提示用 admin PowerShell 重跑；若 npm proxy 問題 → 設 `npm config set registry https://registry.npmjs.org/` |
-| 步驟 10 hash mismatch | lock 與上游不一致；先跑 `generate-skills-lock.ps1` 更新 lock 再重試 |
-| `bq query` 失敗（IAM） | 提示用戶聯絡 ark0720 確認群組成員資格 |
+依 §0.7「失敗時優先自救」— 公司沒 IT，AI 把自救跑完才回報 ark0720。每個錯誤都附「AI 自救步驟」與「何時才回報 ark0720」：
+
+| 錯誤類型 | AI 自救步驟 | 何時回報 ark0720 |
+|---|---|---|
+| **網路 timeout** | (1) 重試 1 次 (2) `Test-NetConnection {host} -Port 443` 看是不是 TLS 死 (3) 檢查 `netsh winhttp show proxy` / `$env:HTTPS_PROXY` (4) 有 VPN 試 disconnect/reconnect | 上述全試完仍連不上 → firewall 硬擋，回報 |
+| **winget 抓不到 package** | (1) `winget source reset --force` (2) `winget source update` (3) fallback 到 `fallback_url`（`manifest/common.json`）手動下載 | 連 fallback_url 也下載不到 → 回報 |
+| **權限不足** | AI 用 `Start-Process powershell -Verb RunAs` 開系統管理員 PowerShell 重跑該指令 | UAC 直接被 group policy 擋 → 回報 |
+| **`git clone` 失敗（步驟 7）** | 同步驟 7 fallback：postBuffer 調大、sslVerify 排除、DNS / proxy 診斷 | 自救都跑完 → 回報（多半要開 firewall 白名單） |
+| **`gws auth login` 失敗** | (1) 檢查 `~/.config/gws/client_secret.json` 是否存在且為合法 JSON (2) `gws auth logout` 後重試 (3) 確認用 dollbao.com.tw 帳號授權 | OAuth 一直被 Google 拒（client 被吊銷？）→ 回報 |
+| **step 8.5 `PERMISSION_DENIED`** | (1) `gcloud auth list` 看當前帳號 (2) 非 dollbao.com.tw → `gcloud auth login` 換帳號 (3) `gcloud secrets list --project=dollbao-gws-cli` 看有無 list 權限 | 帳號是 dollbao.com.tw 但 list 不到 secrets → IAM 沒加，回報 |
+| **step 8.5 `NOT_FOUND`** | `gcloud secrets list --project=dollbao-gws-cli --filter="name~gws-oauth-client"` 確認 secret 真的不存在 | 確認不存在 → 回報「請在 `dollbao-gws-cli` 建 secret，步驟見 `config/README.md`」 |
+| **step 5.5 用錯帳號** | AI 直接跑 `gcloud auth revoke --all` 後重做 step 5.5 | 不需回報 |
+| **`npm install` 失敗** | (1) 確認 Node 真的裝起來 (2) `npm cache clean --force` (3) 設 `npm config set registry https://registry.npmjs.org/` (4) 管理員 PowerShell 重試 (5) 從 GitHub release 下載 binary | release 頁也連不上 → 網路硬擋，回報 |
+| **步驟 10 hash mismatch** | AI 直接跑 `scripts/helpers/generate-skills-lock.ps1` 重生 lock，再跑一次 install-gws-bundle.ps1 | 連續兩次仍 mismatch → 回報（上游可能改 schema） |
+| **`bq query` 失敗（IAM）** | (1) `gcloud auth list` 確認用 dollbao.com.tw (2) `bq ls dollbao-data-center` 看自己有無 BQ 讀權限 (3) 試另一個全員 view 例如 `data-for-all-496615` | 確認帳號正確但所有 BQ 都讀不到 → 回報，需加進 BQ 全員群組 |
+| **Windows 太舊（< 17763）** | 引導 user 跑 Windows Update 自動升級，三輪未動才放棄 | 物理升不上去 → 回報（可能要重灌系統） |
+| **winget 不存在** | (1) `Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe` (2) 下載 .msixbundle from `https://aka.ms/getwinget` 並 `Add-AppxPackage` | 兩種方法都失敗（罕見）→ 回報 |
 
 詳細案例見 [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md)（M2-M4 累積）。
 
