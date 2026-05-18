@@ -1,7 +1,7 @@
 {
   "version": "1",
   "scope": "common",
-  "_comment": "Phase 1 全員必裝清單。M1 骨架，M2 補完 verify_cmd / fallback_url / 確認 winget id。",
+  "_comment": "Phase 1 全員必裝清單。實際 winget 指令與成功判準見 docs/INSTALL.md 步驟 2-5。",
   "tools": [
     {
       "id": "OpenJS.NodeJS.LTS",
@@ -9,8 +9,7 @@
       "installer": "winget",
       "verify_cmd": "node --version",
       "fallback_url": "https://nodejs.org/",
-      "required": true,
-      "_todo_m2": "M2 確認 winget id 與 silent 安裝 flag"
+      "required": true
     },
     {
       "id": "Git.Git",
@@ -18,8 +17,7 @@
       "installer": "winget",
       "verify_cmd": "git --version",
       "fallback_url": "https://git-scm.com/",
-      "required": true,
-      "_todo_m2": "M2 確認 winget id"
+      "required": true
     },
     {
       "id": "Google.CloudSDK",
@@ -27,8 +25,7 @@
       "installer": "winget",
       "verify_cmd": "gcloud --version",
       "fallback_url": "https://cloud.google.com/sdk/docs/install",
-      "required": true,
-      "_todo_m2": "M2 確認 winget id；驗證 bq CLI 是否同時裝上（gcloud bundle 應已含）"
+      "required": true
     }
   ],
   "skill_bundles": [

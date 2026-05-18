@@ -2,7 +2,7 @@
 
 > 這份文件是給 **Claude AI** 讀的。當新人貼完 bootstrap prompt 後，AI 會依本劇本一步步引導。
 >
-> ⏸️ **M2 階段：** Steps 8 / 10 / 11 已填完實際邏輯。Steps 1-7 / 12-13 在 M2.3 補完。
+> Steps 1-11.5 全部填完。Step 12（verify-install 成功判準）待 M2.4 補完。
 
 ---
 
@@ -44,20 +44,54 @@
 
 ### 步驟 1：環境檢查
 - **意圖：** 確認 Windows 版本、winget 可用、有網路
-- **指令：** ⏸️ M2.3 填
-- **成功判準：** ⏸️ M2.3 填
-- **失敗 fallback：** ⏸️ M2.3 填
-- **對話模板：** ⏸️ M2.3 填
+- **指令：**
+  ```powershell
+  # Windows 版本（需 Win10 1809+ build 17763 或 Win11 build 22000+）
+  $os = Get-CimInstance Win32_OperatingSystem
+  Write-Host "$($os.Caption) (Build $($os.BuildNumber))"
+
+  # winget 可用性
+  $winget = Get-Command winget -ErrorAction SilentlyContinue
+  if ($winget) { winget --version }
+
+  # 網路（winget source + GitHub）
+  Test-NetConnection cdn.winget.microsoft.com -Port 443 -InformationLevel Quiet
+  Test-NetConnection github.com -Port 443 -InformationLevel Quiet
+  ```
+- **成功判準：**
+  - `$os.BuildNumber` ≥ 17763（Win10 1809）或 ≥ 22000（Win11）
+  - `winget --version` 回傳 v1.6 或更新
+  - 兩個 `Test-NetConnection` 都 `True`
+- **失敗 fallback：**
+  - Windows 太舊（< 17763）→ winget 不支援，請 user 找 IT 升級系統
+  - winget 不存在 → 提示從 Microsoft Store 裝「App Installer」，或下載 `https://github.com/microsoft/winget-cli/releases/latest`
+  - winget source 連不通 → 多半是公司 proxy/firewall，請 user 聯絡 IT
+  - github 連不通 → 同上；步驟 7 `git clone` 也會失敗
+- **對話模板：** 「我先幫你檢查環境（Windows 版本、winget 是否可用、網路能不能連到 winget 跟 GitHub）。約 30 秒。」
 
 ### 步驟 2-5：裝基礎工具（Node / Git / gcloud）
 - **意圖：** 後續工具的前置依賴
 - **共用模式：**
   1. `Get-Command {cmd}` 偵測 — 已有 → skip + 告知 user「已裝 (v...)」
-  2. 否則跑 `winget install {id} --silent --accept-source-agreements --accept-package-agreements`
-  3. 跑 `verify_cmd`（見 `manifest/common.json`）確認
-  4. winget 失敗 → 提示 `fallback_url`（也在 common.json）讓 user 手動下載
-- **指令細節：** ⏸️ M2.3 填（每步驟確認 winget id / silent flag / 驗證輸出格式）
-- **對話模板：** ⏸️ M2.3 填
+  2. 否則跑下表的 winget 指令
+  3. **重整 PATH**（不然當前 PowerShell session 找不到新指令）：
+     ```powershell
+     $env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")
+     ```
+  4. 跑 `verify_cmd` 確認
+  5. winget 失敗 → 提示 `fallback_url`（見 [`manifest/common.json`](../manifest/common.json)）讓 user 手動下載
+- **指令細節：**
+
+  | 工具 | winget 指令 | verify_cmd 成功訊號 |
+  |---|---|---|
+  | Node.js LTS | `winget install --id OpenJS.NodeJS.LTS --exact --silent --accept-source-agreements --accept-package-agreements` | `node --version` 回 `v20.x` 或更新 |
+  | Git | `winget install --id Git.Git --exact --silent --accept-source-agreements --accept-package-agreements` | `git --version` 回 `git version 2.x` |
+  | Google Cloud SDK | `winget install --id Google.CloudSDK --exact --silent --accept-source-agreements --accept-package-agreements` | `gcloud --version` 首行含 `Google Cloud SDK`，且 `bq --version` 不報錯（bq 隨 bundle 進來） |
+
+- **對話模板：**
+  - Node.js：「我接下來裝 Node.js LTS（約 2 分鐘）。gws CLI 跟很多 skill 都需要它。可以嗎？」
+  - Git：「裝 Git（約 1 分鐘）。後面用它把安裝包 repo clone 下來。」
+  - Google Cloud SDK：「裝 Google Cloud SDK，會同時帶來 gcloud 和 bq CLI（約 3 分鐘）。逗寶曆 skill 和 Secret Manager 都會用到。」
 
 ### 步驟 5.5：`gcloud auth login`
 - **意圖：** 員工本人用公司 Google 帳號登入 gcloud，後續：(a) 步驟 8.5 從 Secret Manager 拉 OAuth credentials；(b) 未來 `dollbao-calendar` skill 查 BigQuery 用
@@ -129,7 +163,7 @@
 - **常見坑：**
   - 用戶用個人 gmail 登入而非公司帳號 → skill 跑起來會權限不足。確認用 `@dollbao.com` 帳號（或公司實際 domain）
   - 瀏覽器沒跳出 → 提示複製終端機印出的 URL 手動開
-- **對話模板：** ⏸️ M2.3 填
+- **對話模板：** 「我接下來引導你登入 gws CLI，會跳出瀏覽器讓你授權 Google Workspace 存取。**請務必用 dollbao.com.tw 公司帳號**（不是個人 gmail），否則之後的 gws-gmail / gws-calendar 等 skill 拿不到公司資料。瀏覽器沒跳出來的話，把終端機印的 URL 複製到瀏覽器手動開。」
 
 ### 步驟 10：裝 gws skill bundle ⭐
 - **意圖：** 把 ~85 個 gws-* / recipe-* skill 安裝到 `~/.claude/skills/`（排除 10 個 persona-*）
