@@ -9,6 +9,7 @@
 - [App-Access-Control — Gmail settings write 永遠 403](#app-access-control--gmail-settings-write-永遠-403)
 - [gws `--full` 拿到的 scope 比想像中少很多](#gws---full-拿到的-scope-比想像中少很多)
 - [OAuth flow `invalid_scope` — 某個 scope 對第三方 client 不開放](#oauth-flow-invalid_scope--某個-scope-對第三方-client-不開放)
+- [Chat API 404 「Google Chat app not found」— scope 有也叫不動](#chat-api-404-google-chat-app-not-found--scope-有也叫不動)
 - [瀏覽器沒跳出 OAuth 同意畫面](#瀏覽器沒跳出-oauth-同意畫面)
 
 ---
@@ -77,17 +78,56 @@ openid, userinfo.email, userinfo.profile
 - 錯誤詳情：`Some requested scopes cannot be shown: [https://www.googleapis.com/auth/keep]`
 - 錯誤代碼：`400: invalid_scope`
 
-**原因：** Google 對部分 Workspace API scope 有額外限制 — 即使 API 在 GCP project 已 enabled、OAuth consent 設 internal-only，scope 本身對第三方 OAuth client 仍不開放。**已知**會擋的：
-- `https://www.googleapis.com/auth/keep` — Google Keep API 只給 first-party app
-- 未來可能遇到：`chat.app.spaces`（workspace events）、某些 admin reports 細分 scope
+**原因：** Google 對部分 Workspace API scope 有額外限制 — 即使 API 在 GCP project 已 enabled、OAuth consent 設 internal-only，scope 本身對第三方 OAuth client 仍不開放。
 
-**重要：** 只要 OAuth request 帶**任一**這類 scope，**整個 OAuth flow 會 fail-fast 400**，使用者連同意畫面都看不到。
+**2026-05-19 ark 機實測結果（在 dollbao-gws-cli OAuth client 上）：**
+- ✅ **開放**：mail.google.com / drive / spreadsheets / calendar / documents / presentations / tasks / forms.body / forms.responses.readonly / chat.messages / chat.spaces / meetings.space.created / meetings.space.readonly / contacts / contacts.readonly / classroom.courses / script.projects / pubsub / admin.directory.group(.member) / admin.directory.user.readonly / admin.reports.audit.readonly / cloud-platform / openid / userinfo.* — 共 26 個
+- ❌ **擋住**：`https://www.googleapis.com/auth/keep` — Google Keep API 只給 first-party app（gws-keep skill 不可用）
+- ⚠️ **未測（謹慎觀察）**：`chat.app.spaces`（Workspace Events 用）、`admin.directory.user` 寫入版本、`vault` 系列
+
+**重要：** 只要 OAuth request 帶**任一**這類 scope，**整個 OAuth flow 會 fail-fast 400**，使用者連同意畫面都看不到。所以**新增 scope 必須先在 maintainer 機驗證再加入 INSTALL.md**。
 
 **解法：**
 1. 從 `--scopes` 清單拿掉壞的那個 scope，重跑 `gws auth login`
 2. 該 scope 對應的 skill（如 `gws-keep`）暫時無法使用 — 等 Google 開放或找替代路徑
 
 **預防：** 新增 scope 時逐個加，不要一次塞 20+。一個壞的會擋全部。
+
+**首次發現：** 2026-05-19（commit 待補）
+
+---
+
+## Chat API 404 「Google Chat app not found」— scope 有也叫不動
+**症狀：**
+- OAuth 已成功拿到 `chat.messages` + `chat.spaces` scope，`gws auth status` 確認
+- 跑 `gws chat spaces list` 或任何 chat API → 回傳 `404: Google Chat app not found. To create a Chat app, you must turn on the Chat API and configure the app in the Google Cloud console.`
+
+**原因：** Google Chat API 不像其他 Workspace API（用個人 OAuth scope 就能呼叫），它要求**呼叫端必須是一個註冊過的「Chat app」**。註冊步驟在 Google Cloud Console → APIs & Services → Google Chat API → Configuration，需要：
+- App name / Avatar URL / Description
+- Functionality（messaging / bot / etc.）
+- Trigger 設定（DMs / spaces / slash commands）
+- Connection settings
+
+純粹用 user OAuth scope 呼叫 chat.* API 不夠，永遠是 404。
+
+**影響的 skill / recipe：**
+- `gws-chat` / `gws-chat-send`
+- `recipe-send-team-announcement`（同時用 Gmail + Chat）— Chat 那半會掛
+- `recipe-post-mortem-setup` 的 Chat 通知部分
+
+**解法（一次性後台作業）：**
+1. 開 https://console.cloud.google.com/apis/library/chat.googleapis.com?project=dollbao-gws-cli
+2. 確認 Chat API enabled（應該已 enabled）
+3. 進 APIs & Services → 找到 Google Chat API → **Configuration** 分頁
+4. 填寫 App name = `dollbao-gws-cli`、Avatar URL（任意 https）、Description
+5. Functionality 勾「Receive 1:1 messages」+「Join spaces and group conversations」
+6. Connection settings 選「App URL」（無 endpoint 也可，重點是註冊存在）
+7. Permissions 選「Specific people and groups in your domain」加 `_HQ@dollbao.com.tw`
+8. Save
+
+**儲存後 chat.* API 應立即可用**（不像 App Access Control 有 24h 傳播延遲）。
+
+**預防：** 新建 OAuth client 後，若 skill bundle 含 chat skill，maintainer 應立即跑這個 Chat app 註冊。
 
 **首次發現：** 2026-05-19（commit 待補）
 
