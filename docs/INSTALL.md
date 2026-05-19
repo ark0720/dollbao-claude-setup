@@ -185,8 +185,8 @@
   - **`PERMISSION_DENIED`：** AI 依序自診
     1. `gcloud auth list --format="value(account)"` 看當前 active account
     2. 不是 `*@dollbao.com.tw` → `gcloud auth login` 換帳號重試（自救完）
-    3. 已是 dollbao.com.tw → 跑 `gcloud secrets list --project=dollbao-gws-cli` 看自己有沒有 `secretmanager.secrets.list` 權限
-    4. 連 list 都不行 → 回報 ark0720：「帳號 `xxx@dollbao.com.tw` 沒拿到 `gws-oauth-client` 的 secretmanager.secretAccessor 角色，請加進 IAM」
+    3. 已是 dollbao.com.tw → 直接重試一次 `gcloud secrets versions access`（token 過期 / 短暫網路抖動常見）
+    4. 還不行 → 回報 ark0720：「帳號 `xxx@dollbao.com.tw` 跑 step 8.5 PERMISSION_DENIED，請確認該帳號在 `_HQ@dollbao.com.tw` 群組內」（**注意：** 不要叫 user 跑 `gcloud secrets list` 自診 — IAM 給的是 `secretmanager.secretAccessor` 角色，本來就沒 list 權限，list 失敗不代表 access 失敗）
   - **`NOT_FOUND`：** AI 先確認 secret 真的不存在
     1. `gcloud secrets list --project=dollbao-gws-cli --filter="name~gws-oauth-client"` — 若這個指令本身 PERMISSION_DENIED → 走上面 PERMISSION_DENIED 流程
     2. 若回空 → secret 真的不存在，回報 ark0720：「請在 GCP project `dollbao-gws-cli` 建 secret `gws-oauth-client`（步驟見 `config/README.md`）」
@@ -334,7 +334,7 @@
 | **權限不足** | AI 用 `Start-Process powershell -Verb RunAs` 開系統管理員 PowerShell 重跑該指令 | UAC 直接被 group policy 擋 → 回報 |
 | **`git clone` 失敗（步驟 7）** | 同步驟 7 fallback：postBuffer 調大、sslVerify 排除、DNS / proxy 診斷 | 自救都跑完 → 回報（多半要開 firewall 白名單） |
 | **`gws auth login` 失敗** | (1) 檢查 `~/.config/gws/client_secret.json` 是否存在且為合法 JSON (2) `gws auth logout` 後重試 (3) 確認用 dollbao.com.tw 帳號授權 | OAuth 一直被 Google 拒（client 被吊銷？）→ 回報 |
-| **step 8.5 `PERMISSION_DENIED`** | (1) `gcloud auth list` 看當前帳號 (2) 非 dollbao.com.tw → `gcloud auth login` 換帳號 (3) `gcloud secrets list --project=dollbao-gws-cli` 看有無 list 權限 | 帳號是 dollbao.com.tw 但 list 不到 secrets → IAM 沒加，回報 |
+| **step 8.5 `PERMISSION_DENIED`** | (1) `gcloud auth list` 看當前帳號 (2) 非 dollbao.com.tw → `gcloud auth login` 換帳號 (3) 已是 dollbao.com.tw → 重試一次 `gcloud secrets versions access` | 重試仍失敗 → 回報 ark0720 確認該帳號在 `_HQ@dollbao.com.tw` 群組內（不要叫 user 跑 `gcloud secrets list`，secretAccessor 沒給 list 權限） |
 | **step 8.5 `NOT_FOUND`** | `gcloud secrets list --project=dollbao-gws-cli --filter="name~gws-oauth-client"` 確認 secret 真的不存在 | 確認不存在 → 回報「請在 `dollbao-gws-cli` 建 secret，步驟見 `config/README.md`」 |
 | **step 5.5 用錯帳號** | AI 直接跑 `gcloud auth revoke --all` 後重做 step 5.5 | 不需回報 |
 | **`npm install` 失敗** | (1) 確認 Node 真的裝起來 (2) `npm cache clean --force` (3) 設 `npm config set registry https://registry.npmjs.org/` (4) 管理員 PowerShell 重試 (5) 從 GitHub release 下載 binary | release 頁也連不上 → 網路硬擋，回報 |

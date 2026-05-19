@@ -56,11 +56,21 @@ gcloud secrets versions add gws-oauth-client `
   --data-file=$jsonFile.FullName `
   --project=dollbao-gws-cli
 
+# 主要 binding：全員 Google Group（穩，不需要 Cloud Identity 驗證）
+gcloud secrets add-iam-policy-binding gws-oauth-client `
+  --member="group:_HQ@dollbao.com.tw" `
+  --role="roles/secretmanager.secretAccessor" `
+  --project=dollbao-gws-cli
+
+# 備援 binding：整個 Workspace domain（需要 dollbao.com.tw 在 Cloud Identity 驗證後才會生效；
+# 留著當保險絲，未驗證時不會作數但也不會壞事）
 gcloud secrets add-iam-policy-binding gws-oauth-client `
   --member="domain:dollbao.com.tw" `
   --role="roles/secretmanager.secretAccessor" `
   --project=dollbao-gws-cli
 ```
+
+> **歷史踩過的坑：** 一開始只設 `domain:dollbao.com.tw`，職員跑 step 8.5 全部 `PERMISSION_DENIED` — `domain:` binding 必須 dollbao.com.tw 在 Google Cloud Identity 完成 domain 驗證才生效，光是 Workspace domain 不夠。改用 `group:_HQ@dollbao.com.tw`（公司既有的全員 group）就解決了。未來新員工加入 `_HQ` 群組自動有權限，離職移出群組自動失效，不用動 IAM。
 
 ### 五、清理 + 驗證
 
