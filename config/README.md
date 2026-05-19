@@ -56,6 +56,8 @@ gcloud secrets versions add gws-oauth-client `
   --data-file=$jsonFile.FullName `
   --project=dollbao-gws-cli
 
+# ── Secret 層：誰能讀 gws-oauth-client 內容 ──
+
 # 主要 binding：全員 Google Group（穩，不需要 Cloud Identity 驗證）
 gcloud secrets add-iam-policy-binding gws-oauth-client `
   --member="group:_HQ@dollbao.com.tw" `
@@ -68,9 +70,23 @@ gcloud secrets add-iam-policy-binding gws-oauth-client `
   --member="domain:dollbao.com.tw" `
   --role="roles/secretmanager.secretAccessor" `
   --project=dollbao-gws-cli
+
+# ── Project 層：誰能對 dollbao-gws-cli 發 API request ──
+# CRITICAL：光給 secretAccessor 不夠！Google Cloud 的 API 呼叫要過兩道閘：
+#   閘 1（Project 層）：能不能對 dollbao-gws-cli 發 Secret Manager API request？
+#                       需 roles/serviceusage.serviceUsageConsumer
+#   閘 2（Secret 層）：能不能讀 gws-oauth-client 這個 secret？
+#                      需 roles/secretmanager.secretAccessor（上面已給）
+# Project owner（ark0720）自動有閘 1 權限所以跑得通，但員工沒有 → 會卡在閘 1
+# 連發 request 都被擋。下面這條補上閘 1。
+gcloud projects add-iam-policy-binding dollbao-gws-cli `
+  --member="group:_HQ@dollbao.com.tw" `
+  --role="roles/serviceusage.serviceUsageConsumer"
 ```
 
-> **歷史踩過的坑：** 一開始只設 `domain:dollbao.com.tw`，職員跑 step 8.5 全部 `PERMISSION_DENIED` — `domain:` binding 必須 dollbao.com.tw 在 Google Cloud Identity 完成 domain 驗證才生效，光是 Workspace domain 不夠。改用 `group:_HQ@dollbao.com.tw`（公司既有的全員 group）就解決了。未來新員工加入 `_HQ` 群組自動有權限，離職移出群組自動失效，不用動 IAM。
+> **歷史踩過的坑（兩次）：**
+> 1. **第一次：** 一開始只設 `domain:dollbao.com.tw`，職員跑 step 8.5 全部 `PERMISSION_DENIED`。`domain:` binding 必須 dollbao.com.tw 在 Google Cloud Identity 完成 domain 驗證才生效，光是 Workspace domain 不夠。改用 `group:_HQ@dollbao.com.tw` 後問題似乎解了。
+> 2. **第二次：** 加了 group 的 `secretAccessor` 後職員**還是** `PERMISSION_DENIED`。原因：缺 project 層的 `serviceusage.serviceUsageConsumer`，員工連對 project 發 Secret Manager API 都被擋（第一道閘就死）。ark0720 是 owner 自動有所以測不出來。**未來在任何新 GCP project 開放給員工用，secretAccessor / bigqueryDataViewer 之類的「資源層」角色都要配套 `serviceUsageConsumer`「專案層」角色，兩個一起給才完整。**
 
 ### 五、清理 + 驗證
 
