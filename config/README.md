@@ -58,16 +58,22 @@ gcloud secrets versions add gws-oauth-client `
 
 # ── Secret 層：誰能讀 gws-oauth-client 內容 ──
 
-# 主要 binding：全員 Google Group（穩，不需要 Cloud Identity 驗證）
+# 主路徑：整個 Workspace domain
+# 前提：dollbao.com.tw 已是 GCP Organization 的 directory domain（dollbao 早就有 org
+# id=227160356082，customer C016v613l），所以 domain: binding 直接生效，不需要再額外驗證。
 gcloud secrets add-iam-policy-binding gws-oauth-client `
-  --member="group:_HQ@dollbao.com.tw" `
+  --member="domain:dollbao.com.tw" `
   --role="roles/secretmanager.secretAccessor" `
   --project=dollbao-gws-cli
 
-# 備援 binding：整個 Workspace domain（需要 dollbao.com.tw 在 Cloud Identity 驗證後才會生效；
-# 留著當保險絲，未驗證時不會作數但也不會壞事）
+# 備援 binding：_HQ 群組
+# 留著當保險絲（萬一未來 domain binding 被誤刪、或某員工不在 dollbao.com.tw domain 但有
+# _HQ 個人成員資格），但**不要靠它**。原因：_HQ 在逗寶是 nested distribution group（裡面
+# 裝子群組裝子群組），Cloud IAM 對 group: binding **只認 direct member，不認 transitive
+# nested member**，所以 _HQ binding 實際只對 _HQ 的兩個個人帳號（ark@、qb@）生效，全公
+# 司絕大多數員工拿不到。
 gcloud secrets add-iam-policy-binding gws-oauth-client `
-  --member="domain:dollbao.com.tw" `
+  --member="group:_HQ@dollbao.com.tw" `
   --role="roles/secretmanager.secretAccessor" `
   --project=dollbao-gws-cli
 
@@ -77,16 +83,30 @@ gcloud secrets add-iam-policy-binding gws-oauth-client `
 #                       需 roles/serviceusage.serviceUsageConsumer
 #   閘 2（Secret 層）：能不能讀 gws-oauth-client 這個 secret？
 #                      需 roles/secretmanager.secretAccessor（上面已給）
-# Project owner（ark0720）自動有閘 1 權限所以跑得通，但員工沒有 → 會卡在閘 1
+# Project owner（ark0720）自動有閘 1 權限所以跑得通，但員工沒有 → 卡在閘 1
 # 連發 request 都被擋。下面這條補上閘 1。
+gcloud projects add-iam-policy-binding dollbao-gws-cli `
+  --member="domain:dollbao.com.tw" `
+  --role="roles/serviceusage.serviceUsageConsumer"
+
+# 備援 project-level binding：_HQ（同上備援，不要靠它）
 gcloud projects add-iam-policy-binding dollbao-gws-cli `
   --member="group:_HQ@dollbao.com.tw" `
   --role="roles/serviceusage.serviceUsageConsumer"
 ```
 
-> **歷史踩過的坑（兩次）：**
-> 1. **第一次：** 一開始只設 `domain:dollbao.com.tw`，職員跑 step 8.5 全部 `PERMISSION_DENIED`。`domain:` binding 必須 dollbao.com.tw 在 Google Cloud Identity 完成 domain 驗證才生效，光是 Workspace domain 不夠。改用 `group:_HQ@dollbao.com.tw` 後問題似乎解了。
-> 2. **第二次：** 加了 group 的 `secretAccessor` 後職員**還是** `PERMISSION_DENIED`。原因：缺 project 層的 `serviceusage.serviceUsageConsumer`，員工連對 project 發 Secret Manager API 都被擋（第一道閘就死）。ark0720 是 owner 自動有所以測不出來。**未來在任何新 GCP project 開放給員工用，secretAccessor / bigqueryDataViewer 之類的「資源層」角色都要配套 `serviceUsageConsumer`「專案層」角色，兩個一起給才完整。**
+> **歷史踩過的坑（三次，紀錄完整給未來的 ark0720）：**
+>
+> 1. **第一次（誤判 domain 沒生效）：** 一開始只設 `domain:dollbao.com.tw` 的 secret-level `secretAccessor`，職員跑 step 8.5 全部 `PERMISSION_DENIED`。**當時誤以為**是 domain 沒做 Cloud Identity 驗證，改用 `group:_HQ@dollbao.com.tw`。其實 dollbao 早就有 GCP organization、domain 早就驗證完成 — 問題從來不在 domain binding 本身，而是缺 project 層的 `serviceUsageConsumer`（見第三次）。
+>
+> 2. **第二次（發現兩道閘）：** 加了 `_HQ` group 的 `secretAccessor` 後職員仍 `PERMISSION_DENIED`。發現原因：Google Cloud API 呼叫要過兩道閘，光資源層 (`secretAccessor`) 不夠，還要 project 層 (`serviceUsageConsumer`)。補上 `_HQ` 的 project-level `serviceUsageConsumer`。Owner（ark0720）自動有閘 1 所以自己測不出來。
+>
+> 3. **第三次（發現 nested group 不認 transitive）：** 即使 `_HQ` 兩道閘都齊了，員工 jessical 仍 `PERMISSION_DENIED`。查 `_HQ` 群組成員，發現裡面全是子群組（`_div1` / `_dept5B` / `_HQ` 等 17 個）+ 2 個個人帳號（ark@、qb@）。**Google Cloud IAM 對 `group:` binding 只認 direct member，不認 transitive / nested group**，所以 `_HQ` binding 對「子群組底下的員工」完全無效。最終解：用 `domain:dollbao.com.tw` binding（兩道閘都用 domain），_HQ binding 降為保險絲。
+>
+> **未來通則（GCP IAM checklist）：**
+> - **兩道閘原則：** 給員工任何 GCP 資源權限，資源層角色（`secretAccessor` / `dataViewer` / 等）+ project 層 `serviceUsageConsumer` **兩個都要給**
+> - **群組原則：** 用 `domain:dollbao.com.tw` 當主要 binding（dollbao 已驗證），別靠 `group:_HQ`（nested 限制）。除非用「直接成員都是個人帳號」的 flat group
+> - **驗證原則：** 改完 IAM 別只靠 owner 帳號測，要用一個透過子群組進來的真實員工帳號（如 jessical）測一次才算數
 
 ### 五、清理 + 驗證
 
