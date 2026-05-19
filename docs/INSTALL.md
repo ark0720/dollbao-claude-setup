@@ -30,7 +30,7 @@
 | 7 | Clone setup repo | `git clone https://github.com/ark0720/dollbao-claude-setup.git $env:USERPROFILE\.claude\dollbao-setup` | 30 秒 |
 | **8** | **裝 gws CLI** | `npm install -g @googleworkspace/cli` | 1 分鐘 |
 | **8.5** | **取 gws OAuth client** | `gcloud secrets versions access latest --secret=gws-oauth-client --project=dollbao-gws-cli` → `~/.config/gws/client_secret.json` | 5 秒 |
-| 9 | `gws auth login --full` | 引導瀏覽器授權（一次拿齊所有 scope）| 1 分鐘 |
+| 9 | `gws auth login --scopes ...` | 引導瀏覽器授權（明確 scope 清單；**不要用 `--full`**，那只多 pubsub+cloud-platform）| 1 分鐘 |
 | 10 | 裝 gws skill bundle | 跑 `~/.claude/dollbao-setup/scripts/helpers/install-gws-bundle.ps1`（依 `manifest/skills-lock.json` 拉 ~85 個非 persona-* skill 到 `~/.claude/skills/`） | 2 分鐘 |
 | 11 | 裝自製 skill | 跑 `~/.claude/dollbao-setup/scripts/helpers/install-dollbao-skills.ps1`（依 `manifest/common.json` 的 `skills[]` 複製到 `~/.claude/skills/`） | 30 秒 |
 | **11.5** | **裝逗寶共用 Claude defaults** | 跑 `~/.claude/dollbao-setup/scripts/helpers/install-claude-defaults.ps1`（把行為原則寫進 `~/.claude/CLAUDE.md`，所有 session 自動載入） | 5 秒 |
@@ -192,24 +192,55 @@
     2. 若回空 → secret 真的不存在，回報 ark0720：「請在 GCP project `dollbao-gws-cli` 建 secret `gws-oauth-client`（步驟見 `config/README.md`）」
     3. 若 secret 在但版本是 disabled → `gcloud secrets versions list --secret=gws-oauth-client --project=dollbao-gws-cli` 看版本狀態，回報 ark0720
   - **其他錯誤：** 先把錯誤訊息與 `gcloud --version`、`gcloud auth list`、`gcloud config list` 三項輸出整理好，再回報 ark0720
-- **對話模板：** 「我接下來從公司 GCP 的 Secret Manager 拉 gws CLI 要用的 OAuth credentials。這只會發生一次，下一步 `gws auth login --full` 才是綁定你的個人 Workspace 帳號（用 `--full` 一次拿齊所有 skill 要的 scope）。」
+- **對話模板：** 「我接下來從公司 GCP 的 Secret Manager 拉 gws CLI 要用的 OAuth credentials。這只會發生一次，下一步 `gws auth login --scopes ...` 才是綁定你的個人 Workspace 帳號（用明確 scope 清單拿齊 skill 需要的權限；不能用 `--full`，那只多兩個 scope）。」
 
-### 步驟 9：`gws auth login --full`
+### 步驟 9：`gws auth login --scopes ...`（用明確 scope 清單，不要 `--full`）
 - **意圖：** 把新人的 Google Workspace 帳號 OAuth 授權給 gws CLI
-- **前置：** gws CLI 已裝（步驟 8）+ OAuth client 已配置（步驟 8.5）
+- **前置：** gws CLI 已裝（步驟 8）+ OAuth client 已配置（步驟 8.5）+ admin 已將 gws-cli 升級為 Trusted（一次性後台工作，見 `docs/TROUBLESHOOTING.md` §App-Access-Control）
 - **指令：**
   ```powershell
-  gws auth login --full
+  $scopes = @(
+    'https://mail.google.com/',
+    'https://www.googleapis.com/auth/drive',
+    'https://www.googleapis.com/auth/spreadsheets',
+    'https://www.googleapis.com/auth/calendar',
+    'https://www.googleapis.com/auth/documents',
+    'https://www.googleapis.com/auth/presentations',
+    'https://www.googleapis.com/auth/tasks',
+    'https://www.googleapis.com/auth/admin.directory.group',
+    'https://www.googleapis.com/auth/admin.directory.group.member',
+    'https://www.googleapis.com/auth/admin.reports.audit.readonly',
+    'https://www.googleapis.com/auth/cloud-platform',
+    'openid',
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile'
+  ) -join ','
+  gws auth login --scopes $scopes
   ```
-- **為什麼一定要 `--full`：** 不加 flag 預設只 request ~15 個 scope（gmail / calendar / drive / docs / sheets / slides / tasks / cloud-platform），會缺 `forms` / `keep` / `chat` / `meet` / `contacts` / `classroom` / `script` / `admin.reports` / `chat.app.spaces`(workspace events) 等。新人裝完 ~85 個 skill bundle，後續跑 `gws-forms` / `gws-keep` / `gws-chat*` / `gws-meet` / `gws-people` / `gws-classroom` / `gws-script*` / `gws-events*` / `gws-admin-reports` / 與這些相關的 `recipe-*` 都會 403。`--full` 一次授權拿齊所有 scope，反正 OAuth client 是 `orgInternalOnly: true`，不會被 Google 卡驗證。
+- **為什麼不用 `--full`：** 實測 `--full` 只在預設集合（drive / sheets / gmail.modify / calendar / docs / slides / tasks / openid / userinfo）上加 `pubsub + cloud-platform`，**根本不含** `gmail.settings.basic` / `forms` / `keep` / `chat` / `meet` / `contacts` / `classroom` / `script` / `admin.reports`。gws CLI `--help` 的「Request all scopes」描述是誤導；真正的「all」是上述 12 個固定集合，不是「全部 skill 需要的所有 scope」。
+- **為什麼用 `https://mail.google.com/` 取代 `gmail.modify`：** `gmail.modify` 只涵蓋訊息 + 標籤讀寫，**不涵蓋 Gmail settings 寫入**（filter / vacation / forwarding）。`https://mail.google.com/` 是 Gmail 最大 scope，涵蓋 messages + settings 全部讀寫，這是 AI 自動化 email（建 filter / 設自動回覆 / 設定轉寄）的必要條件。
+- **這 14 個 scope 為什麼是這 14 個：**
+  - mail.google.com — Gmail 完整（含 filter / vacation / forwarding 寫入）
+  - drive / spreadsheets / documents / presentations — 文件四件套寫入
+  - calendar / tasks — 日曆 + 工作
+  - admin.directory.group(.member) — Group 成員管理（recipe-share-folder-with-team 等用）
+  - admin.reports.audit.readonly — Workspace audit log 查詢（自診斷用：誰登過、誰沒登過）
+  - cloud-platform — gcloud / BQ / Secret Manager
+  - openid / userinfo.email / userinfo.profile — 身份識別
+- **為什麼不一次包更多（如 forms / keep / chat / meet）：** 部分 Workspace API scope 對第三方 OAuth client 有額外限制：
+  - `keep` — Google 直接擋（400 invalid_scope）— Google Keep API 對非 first-party app 不開放
+  - `chat.messages` / `chat.spaces` / `meetings.space.*` / `forms.*` / `classroom.*` / `script.*` — 可能個別失敗（待逐個驗證），新人裝這些 skill 後跑時若 403 再個別補
+  - 加單一壞 scope 會讓 Google 整個 OAuth flow 400 失敗（fail-fast）
 - **成功判準：**
   - `gws auth status` 顯示 logged in + 用戶 email
-  - `gws auth status --format json` 的 `scope_count` ≥ 25（含 forms / keep / chat / meet / classroom / script / contacts 等）
+  - `gws auth status --format json` 的 `scope_count == 16`（14 個 scope 拆 email/profile 後 + openid + admin.reports 等 = 約 16）
+  - 試跑 `gws gmail users settings filters list --params '{"userId":"me"}'`：不報 403 即正常
 - **常見坑：**
   - 用戶用個人 gmail 登入而非公司帳號 → skill 跑起來會權限不足。確認用 `@dollbao.com.tw` 帳號
-  - 瀏覽器沒跳出 → 提示複製終端機印出的 URL 手動開
-  - 已經跑過不帶 `--full` 的 `gws auth login`（舊版 INSTALL.md）→ 直接重跑 `gws auth login --full` 補 scope，不必先 logout
-- **對話模板：** 「我接下來引導你登入 gws CLI，會跳出瀏覽器讓你授權 Google Workspace 存取。我會用 `--full` 一次把所有 skill 需要的 scope 拿齊（Gmail / Calendar / Drive / Forms / Keep / Chat / Meet / Tasks / Classroom / Script…），免得之後某個 skill 突然跳權限不足。**請務必用 dollbao.com.tw 公司帳號**（不是個人 gmail），否則之後的 skill 拿不到公司資料。瀏覽器沒跳出來的話，把終端機印的 URL 複製到瀏覽器手動開。」
+  - 瀏覽器沒跳出 → 設 `$env:BROWSER='echo'` 後 gws 會把 URL 印到 stdout 給 user 複製
+  - 已經跑過 `--full` 或不帶 flag 的 `gws auth login`（舊版 INSTALL.md）→ 直接重跑本步驟以上 `--scopes` 命令補完，**不必先 logout**
+  - `filter.create` 跑出 403 ACCESS_TOKEN_SCOPE_INSUFFICIENT 雖然 token 有 mail.google.com → 是 Workspace Admin Console「App Access Control」沒把 gws-cli 升 Trusted（一次性後台工作，見 TROUBLESHOOTING.md）。**設完 Trust 後 Gmail settings 寫入子系統的傳播延遲可達 1–24 小時**（讀 + message 寫立刻通，settings 寫慢）
+- **對話模板：** 「我接下來引導你登入 gws CLI，會跳出瀏覽器讓你授權 Google Workspace 存取。我會用明確 scope 清單（14 個）拿包括 Gmail 設定寫入在內的所有日常 skill 需要的權限。**請務必用 dollbao.com.tw 公司帳號**（不是個人 gmail）。瀏覽器沒跳出來的話，把終端機印的 URL 複製到瀏覽器手動開。」
 
 ### 步驟 10：裝 gws skill bundle ⭐
 - **意圖：** 把 ~85 個 gws-* / recipe-* skill 安裝到 `~/.claude/skills/`（排除 10 個 persona-*）
@@ -322,7 +353,7 @@
 
 - **偵測已裝：** 用 `Get-Command {tool}` 或 `winget list --id {id}`，**不要** 重複跑安裝
 - **skill 比 hash：** `install-gws-bundle.ps1` / `install-dollbao-skills.ps1` 內建 hash 比對，已對齊則 skip
-- **auth 不重做：** `gws auth status` 顯示 OK **且** `scope_count` 已 ≥ 25 才 skip step 9；否則需重跑 `gws auth login --full` 補 scope（這是常見舊新人 migration 路徑）
+- **auth 不重做：** `gws auth status` 顯示 OK **且** `scope_count` 已 ≥ 14 + 含 `https://mail.google.com/` 才 skip step 9；否則需重跑 `gws auth login --scopes ...` 補 scope（舊新人若已跑過 `--full` 或無 flag 的 `gws auth login`，scope 必定不夠，需依本 INSTALL.md 重跑）
 - **對話可中斷重來：** 用戶 Ctrl+C 後重貼 bootstrap prompt，AI 應從中斷點繼續而非從頭
 
 ---
@@ -337,7 +368,7 @@
 | **winget 抓不到 package** | (1) `winget source reset --force` (2) `winget source update` (3) fallback 到 `fallback_url`（`manifest/common.json`）手動下載 | 連 fallback_url 也下載不到 → 回報 |
 | **權限不足** | AI 用 `Start-Process powershell -Verb RunAs` 開系統管理員 PowerShell 重跑該指令 | UAC 直接被 group policy 擋 → 回報 |
 | **`git clone` 失敗（步驟 7）** | 同步驟 7 fallback：postBuffer 調大、sslVerify 排除、DNS / proxy 診斷 | 自救都跑完 → 回報（多半要開 firewall 白名單） |
-| **`gws auth login --full` 失敗** | (1) 檢查 `~/.config/gws/client_secret.json` 是否存在且為合法 JSON (2) `gws auth logout` 後重試 `gws auth login --full` (3) 確認用 dollbao.com.tw 帳號授權 (4) 跑完後用 `gws auth status --format json` 看 `scope_count` 是否 ≥ 25 | OAuth 一直被 Google 拒（client 被吊銷？）→ 回報 |
+| **`gws auth login --scopes ...` 失敗** | (1) 檢查 `~/.config/gws/client_secret.json` 是否存在且為合法 JSON (2) Google 回 `invalid_scope` → 某個 scope 對第三方 OAuth client 不開放（如 `keep`），依本 INSTALL.md step 9 的 14 個 scope 重跑（已剔除已知壞的）(3) `gws auth logout` 後重試 (4) 確認用 dollbao.com.tw 帳號授權 (5) 跑完後用 `gws auth status --format json` 看 `scope_count` 是否 ≥ 14 + 含 `https://mail.google.com/` | OAuth 一直被 Google 拒（client 被吊銷？）→ 回報 |
 | **step 8.5 `PERMISSION_DENIED`** | (1) `gcloud auth list` 看當前帳號 (2) 非 dollbao.com.tw → `gcloud auth login` 換帳號 (3) 已是 dollbao.com.tw → 重試一次 `gcloud secrets versions access` | 重試仍失敗 → 回報 ark0720 確認該帳號在 `_HQ@dollbao.com.tw` 群組內（不要叫 user 跑 `gcloud secrets list`，secretAccessor 沒給 list 權限） |
 | **step 8.5 `NOT_FOUND`** | `gcloud secrets list --project=dollbao-gws-cli --filter="name~gws-oauth-client"` 確認 secret 真的不存在 | 確認不存在 → 回報「請在 `dollbao-gws-cli` 建 secret，步驟見 `config/README.md`」 |
 | **step 5.5 用錯帳號** | AI 直接跑 `gcloud auth revoke --all` 後重做 step 5.5 | 不需回報 |
