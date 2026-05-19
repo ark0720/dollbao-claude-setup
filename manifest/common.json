@@ -33,7 +33,7 @@
       "id": "gws",
       "source": "googleworkspace/cli",
       "lockfile": "skills-lock.json",
-      "exclude_patterns": ["persona-*"],
+      "exclude_patterns": ["persona-*", "gws-keep"],
       "install_helper": "scripts/helpers/install-gws-bundle.ps1"
     }
   ],
