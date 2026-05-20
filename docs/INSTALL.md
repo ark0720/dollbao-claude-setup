@@ -211,20 +211,50 @@
     'https://www.googleapis.com/auth/forms.body',
     'https://www.googleapis.com/auth/forms.responses.readonly',
     'https://www.googleapis.com/auth/pubsub',
-    # Workspace 進階（6）
+    # Gmail 設定子系統（2）— filter / vacation / forwarding 寫入（mail.google.com 涵蓋但獨立 register 較乾淨，且未來若換窄 scope client 仍可用）
+    'https://www.googleapis.com/auth/gmail.settings.basic',
+    'https://www.googleapis.com/auth/gmail.settings.sharing',
+    # Chat 進階（10）— 加人 / 唯讀讀訊息 / 反應符號 / 客製貼圖 / 建群
     'https://www.googleapis.com/auth/chat.messages',
+    'https://www.googleapis.com/auth/chat.messages.readonly',
+    'https://www.googleapis.com/auth/chat.messages.reactions',
+    'https://www.googleapis.com/auth/chat.messages.reactions.create',
+    'https://www.googleapis.com/auth/chat.messages.reactions.readonly',
+    'https://www.googleapis.com/auth/chat.memberships',
+    'https://www.googleapis.com/auth/chat.memberships.readonly',
+    'https://www.googleapis.com/auth/chat.customemojis',
+    'https://www.googleapis.com/auth/chat.customemojis.readonly',
     'https://www.googleapis.com/auth/chat.spaces',
+    'https://www.googleapis.com/auth/chat.spaces.create',
+    # Drive 細權限（3）— 比 drive 更精細的 scope 給未來窄 client 預備
+    'https://www.googleapis.com/auth/drive.file',
+    'https://www.googleapis.com/auth/drive.metadata.readonly',
+    'https://www.googleapis.com/auth/drive.appdata',
+    'https://www.googleapis.com/auth/drive.scripts',
+    # Workspace 其他（5）
     'https://www.googleapis.com/auth/meetings.space.created',
     'https://www.googleapis.com/auth/meetings.space.readonly',
+    'https://www.googleapis.com/auth/meetings.space.settings',
     'https://www.googleapis.com/auth/contacts',
     'https://www.googleapis.com/auth/contacts.readonly',
+    'https://www.googleapis.com/auth/contacts.other.readonly',
     'https://www.googleapis.com/auth/classroom.courses',
+    'https://www.googleapis.com/auth/forms.body.readonly',
+    'https://www.googleapis.com/auth/directory.readonly',
+    # Apps Script 完整工具鏈（5）
     'https://www.googleapis.com/auth/script.projects',
-    # Workspace admin（4）
+    'https://www.googleapis.com/auth/script.projects.readonly',
+    'https://www.googleapis.com/auth/script.deployments',
+    'https://www.googleapis.com/auth/script.deployments.readonly',
+    'https://www.googleapis.com/auth/script.processes',
+    # Workspace admin（5）
     'https://www.googleapis.com/auth/admin.directory.group',
     'https://www.googleapis.com/auth/admin.directory.group.member',
     'https://www.googleapis.com/auth/admin.directory.user.readonly',
     'https://www.googleapis.com/auth/admin.reports.audit.readonly',
+    'https://www.googleapis.com/auth/admin.reports.usage.readonly',
+    # Workspace 訂閱（1）
+    'https://www.googleapis.com/auth/apps.licensing',
     # GCP / 身份（4）
     'https://www.googleapis.com/auth/cloud-platform',
     'openid',
@@ -235,39 +265,41 @@
   ```
 - **為什麼不用 `--full`：** 實測 `--full` 只在預設集合（drive / sheets / gmail.modify / calendar / docs / slides / tasks / openid / userinfo）上加 `pubsub + cloud-platform`，**根本不含** `gmail.settings.basic` / `forms` / `keep` / `chat` / `meet` / `contacts` / `classroom` / `script` / `admin.reports`。gws CLI `--help` 的「Request all scopes」描述是誤導；真正的「all」是上述 12 個固定集合，不是「全部 skill 需要的所有 scope」。
 - **為什麼用 `https://mail.google.com/` 取代 `gmail.modify`：** `gmail.modify` 只涵蓋訊息 + 標籤讀寫，**不涵蓋 Gmail settings 寫入**（filter / vacation / forwarding）。`https://mail.google.com/` 是 Gmail 最大 scope，涵蓋 messages + settings 全部讀寫，這是 AI 自動化 email（建 filter / 設自動回覆 / 設定轉寄）的必要條件。
-- **這 26 個 scope 為什麼是這 26 個（2026-05-19 ark 機實測全部 OAuth granted）：**
-  - mail.google.com — Gmail 完整（含 filter / vacation / forwarding 寫入）
-  - drive / spreadsheets / documents / presentations — 文件四件套寫入
-  - calendar / tasks — 日曆 + 工作
-  - forms.body / forms.responses.readonly — gws-forms / recipe-collect-form-responses / create-feedback-form
-  - pubsub — gws-events* / recipe-watch-drive-changes 等 watch endpoint
-  - chat.messages / chat.spaces — gws-chat* / recipe-send-team-announcement（**但 Chat API 還需在 Cloud Console 註冊 Chat app 才能實際呼叫**，見 TROUBLESHOOTING.md）
-  - meetings.space.created / meetings.space.readonly — gws-meet / recipe-create-meet-space / review-meet-participants
-  - contacts / contacts.readonly — gws-people / recipe-sync-contacts-to-sheet
-  - classroom.courses — gws-classroom / recipe-create-classroom-course
-  - script.projects — gws-script* 系列
-  - admin.directory.group(.member) — Group 成員管理（recipe-share-folder-with-team 等）
-  - admin.directory.user.readonly — recipe-find-free-time 查 user / 行事曆衝突
-  - admin.reports.audit.readonly — Workspace audit log 查詢（自診斷：誰登過、誰沒登過）
-  - cloud-platform — gcloud / BQ / Secret Manager / modelarmor
-  - openid / userinfo.email / userinfo.profile — 身份識別
-- **特意 NOT 加的 scope：**
-  - `keep` — Google 對第三方 OAuth 整個擋（400 invalid_scope），會讓整個 OAuth flow fail-fast → gws-keep skill 不可用，這是 Google 的限制
-  - 加單一壞 scope 會讓 Google 整個 OAuth flow 400 失敗（fail-fast），所以新增 scope 一定要先在 maintainer 機驗證
+- **這 51 個 scope 怎麼來的（2026-05-19 初版 26 個實測 + 2026-05-20 擴 25 個低風險自動化 scope）：**
+  - **核心文件 / 通訊**：mail.google.com（Gmail 全部含 filter / vacation 寫入）/ drive / spreadsheets / documents / presentations / tasks / forms.body / forms.responses.readonly / calendar / pubsub
+  - **Gmail 設定子系統獨立 register**：gmail.settings.basic / gmail.settings.sharing（mail.google.com 已涵蓋但獨立 register 較乾淨，且未來若分發窄 scope client 可直接用）
+  - **Chat 進階**：chat.messages / chat.messages.readonly / chat.messages.reactions(.create/.readonly) / chat.memberships(.readonly) / chat.customemojis(.readonly) / chat.spaces / chat.spaces.create — 涵蓋新人加群 / AI 看 chat 整理 / 表情符號 / 公司客製貼圖 / 自動建群（**Chat API 還需在 Cloud Console 註冊 Chat app**，見 TROUBLESHOOTING.md）
+  - **Drive 細權限**：drive.file（只存取 user 給定檔案）/ drive.metadata.readonly（只看 metadata）/ drive.appdata（app sandbox）/ drive.scripts — 未來分發窄 client 用
+  - **Workspace 其他**：meetings.space.created/.readonly/.settings — Meet 完整；contacts/.readonly/.other.readonly — 含「其他聯絡人」；classroom.courses；forms.body.readonly；directory.readonly — 公司通訊錄唯讀
+  - **Apps Script 完整工具鏈**：script.projects(.readonly) / script.deployments(.readonly) / script.processes — push code + 建 deployment + 看執行歷史
+  - **Workspace admin**：admin.directory.group(.member) — Group 成員；admin.directory.user.readonly — 查同事；admin.reports.audit.readonly + admin.reports.usage.readonly — Workspace 稽核 + 使用量
+  - **Workspace 訂閱**：apps.licensing — 看 License 配額
+  - **GCP / 身份**：cloud-platform / openid / userinfo.email / userinfo.profile
+- **特意 NOT 加的 scope（不是漏，是刻意不加）：**
+  - `keep` / `keep.readonly` — Google 對第三方 OAuth 整個擋（400 invalid_scope），會讓整個 OAuth flow fail-fast → gws-keep skill 不可用（manifest 已 exclude）
+  - `apps.alerts` — Console 判 invalid（Alert Center API 不開放或未啟用），加了會讓 console「新增至資料表」整批失敗
+  - **`chat.admin.*` / `chat.delete` / `chat.import` / `chat.bot` / `chat.app.*`** — 管理員身份或 Chat app-as-bot 模式，風險過高（破壞性、權限放大）
+  - **`admin.directory.user`（寫）** — 寫員工帳號 / 開停帳是 HR 動作，不該由 CLI 做
+  - **`ediscovery` / `cloud-identity.inboundsso` / `cloud-identity.policies` / `cloud-identity.devices`** — 法遵 / SSO / MDM 全域設定，改錯影響全公司
+  - **`user.birthday.read` / `gender.read` / `addresses.read` / `phonenumbers.read` 等 PII 細項** — 員工個資不必要拿
+  - **`apps.order` / `apps.groups.settings`** — billing / 群組權限政策
+  - **`*.readonly` 跟主 scope 重疊的（如 spreadsheets.readonly）** — 寫已含讀，不必再加
+  - 完整分類見 memory `oauth-scope-249-classification`
+  - **加單一壞 scope 會讓 Google 整個 OAuth flow 400 失敗（fail-fast），所以新增 scope 一定要先在 maintainer 機驗證**
 - **OAuth granted ≠ API 立即可用 — 已知三類例外：**
   - **filter.create / setVacation / 任何 Gmail settings 寫入** — 需要 Workspace Admin Console 把 gws-cli 升 Trusted（一次性，見 TROUBLESHOOTING.md），且傳播可達 1–24h
   - **admin-reports.activities.list** — 同上 Trust 傳播路徑
   - **chat.messages / chat.spaces 呼叫** — 即使 scope 有，Chat API 要求 Cloud Console 另外註冊「Chat app」（人類 OAuth 無法繞過），見 TROUBLESHOOTING.md
 - **成功判準：**
   - `gws auth status` 顯示 logged in + 用戶 email
-  - `gws auth status --format json` 的 `scope_count == 28`（26 個 scope + `email`+`profile` 拆解 = 28）
+  - `gws auth status --format json` 的 `scope_count == 53`（51 個 scope + `email`+`profile` 拆解 = 53）
   - 試跑 `gws gmail users settings filters list --params '{"userId":"me"}'`：不報 403 即正常（filter 讀不受 Trust 影響）
 - **常見坑：**
   - 用戶用個人 gmail 登入而非公司帳號 → skill 跑起來會權限不足。確認用 `@dollbao.com.tw` 帳號
   - 瀏覽器沒跳出 → 設 `$env:BROWSER='echo'` 後 gws 會把 URL 印到 stdout 給 user 複製
   - 已經跑過 `--full` 或不帶 flag 的 `gws auth login`（舊版 INSTALL.md）→ 直接重跑本步驟以上 `--scopes` 命令補完，**不必先 logout**
   - `filter.create` 跑出 403 ACCESS_TOKEN_SCOPE_INSUFFICIENT 雖然 token 有 mail.google.com → 是 Workspace Admin Console「App Access Control」沒把 gws-cli 升 Trusted（一次性後台工作，見 TROUBLESHOOTING.md）。**設完 Trust 後 Gmail settings 寫入子系統的傳播延遲可達 1–24 小時**（讀 + message 寫立刻通，settings 寫慢）
-- **對話模板：** 「我接下來引導你登入 gws CLI，會跳出瀏覽器讓你授權 Google Workspace 存取。我會用明確 scope 清單（26 個，maintainer 機實測全部 Google granted）拿包括 Gmail 設定寫入、Forms、Chat、Meet、Classroom、Script、Workspace admin 等在內的所有日常 skill 需要的權限。**請務必用 dollbao.com.tw 公司帳號**（不是個人 gmail）。瀏覽器沒跳出來的話，設 `$env:BROWSER='echo'` 後重跑，把終端機印的 URL 複製到瀏覽器手動開。」
+- **對話模板：** 「我接下來引導你登入 gws CLI，會跳出瀏覽器讓你授權 Google Workspace 存取。我會用明確 scope 清單（51 個，maintainer 機實測全部 Google granted）拿包括 Gmail 設定寫入、Forms、Chat 進階（含加人 / 表情符號 / 客製貼圖）、Meet、Classroom、Apps Script 完整工具鏈、Workspace admin / audit / usage 等所有日常 skill 需要的權限。**請務必用 dollbao.com.tw 公司帳號**（不是個人 gmail）。瀏覽器沒跳出來的話，設 `$env:BROWSER='echo'` 後重跑，把終端機印的 URL 複製到瀏覽器手動開。」
 
 ### 步驟 10：裝 gws skill bundle ⭐
 - **意圖：** 把 ~85 個 gws-* / recipe-* skill 安裝到 `~/.claude/skills/`（排除 10 個 persona-*）
@@ -380,7 +412,7 @@
 
 - **偵測已裝：** 用 `Get-Command {tool}` 或 `winget list --id {id}`，**不要** 重複跑安裝
 - **skill 比 hash：** `install-gws-bundle.ps1` / `install-dollbao-skills.ps1` 內建 hash 比對，已對齊則 skip
-- **auth 不重做：** `gws auth status` 顯示 OK **且** `scope_count` 已 ≥ 28 + 含 `https://mail.google.com/` 才 skip step 9；否則需重跑 `gws auth login --scopes ...` 補 scope（舊新人若已跑過 `--full` 或無 flag 的 `gws auth login`，scope 必定不夠，需依本 INSTALL.md 重跑）
+- **auth 不重做：** `gws auth status` 顯示 OK **且** `scope_count` 已 ≥ 53 + 含 `https://mail.google.com/` 才 skip step 9；否則需重跑 `gws auth login --scopes ...` 補 scope（舊新人若已跑過 `--full` 或無 flag 的 `gws auth login`、或舊版 26-scope 安裝，scope 必定不夠，需依本 INSTALL.md 重跑）
 - **對話可中斷重來：** 用戶 Ctrl+C 後重貼 bootstrap prompt，AI 應從中斷點繼續而非從頭
 
 ---
@@ -395,7 +427,7 @@
 | **winget 抓不到 package** | (1) `winget source reset --force` (2) `winget source update` (3) fallback 到 `fallback_url`（`manifest/common.json`）手動下載 | 連 fallback_url 也下載不到 → 回報 |
 | **權限不足** | AI 用 `Start-Process powershell -Verb RunAs` 開系統管理員 PowerShell 重跑該指令 | UAC 直接被 group policy 擋 → 回報 |
 | **`git clone` 失敗（步驟 7）** | 同步驟 7 fallback：postBuffer 調大、sslVerify 排除、DNS / proxy 診斷 | 自救都跑完 → 回報（多半要開 firewall 白名單） |
-| **`gws auth login --scopes ...` 失敗** | (1) 檢查 `~/.config/gws/client_secret.json` 是否存在且為合法 JSON (2) Google 回 `invalid_scope` → 某個 scope 對第三方 OAuth client 不開放（如 `keep`），依本 INSTALL.md step 9 的 26 個 scope 重跑（已剔除已知壞的）(3) `gws auth logout` 後重試 (4) 確認用 dollbao.com.tw 帳號授權 (5) 跑完後用 `gws auth status --format json` 看 `scope_count` 是否 ≥ 28 + 含 `https://mail.google.com/` | OAuth 一直被 Google 拒（client 被吊銷？）→ 回報 |
+| **`gws auth login --scopes ...` 失敗** | (1) 檢查 `~/.config/gws/client_secret.json` 是否存在且為合法 JSON (2) Google 回 `invalid_scope` → 某個 scope 對第三方 OAuth client 不開放（如 `keep` / `apps.alerts`），依本 INSTALL.md step 9 的 51 個 scope 重跑（已剔除已知壞的）(3) `gws auth logout` 後重試 (4) 確認用 dollbao.com.tw 帳號授權 (5) 跑完後用 `gws auth status --format json` 看 `scope_count` 是否 ≥ 53 + 含 `https://mail.google.com/` | OAuth 一直被 Google 拒（client 被吊銷？）→ 回報 |
 | **step 8.5 `PERMISSION_DENIED`** | (1) `gcloud auth list` 看當前帳號 (2) 非 dollbao.com.tw → `gcloud auth login` 換帳號 (3) 已是 dollbao.com.tw → 重試一次 `gcloud secrets versions access` | 重試仍失敗 → 回報 ark0720 確認該帳號在 `_HQ@dollbao.com.tw` 群組內（不要叫 user 跑 `gcloud secrets list`，secretAccessor 沒給 list 權限） |
 | **step 8.5 `NOT_FOUND`** | `gcloud secrets list --project=dollbao-gws-cli --filter="name~gws-oauth-client"` 確認 secret 真的不存在 | 確認不存在 → 回報「請在 `dollbao-gws-cli` 建 secret，步驟見 `config/README.md`」 |
 | **step 5.5 用錯帳號** | AI 直接跑 `gcloud auth revoke --all` 後重做 step 5.5 | 不需回報 |
