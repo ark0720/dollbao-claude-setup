@@ -293,7 +293,7 @@
   - 瀏覽器沒跳出 → 設 `$env:BROWSER='echo'` 後 gws 會把 URL 印到 stdout 給 user 複製
   - 已經跑過 `--full` 或不帶 flag 的 `gws auth login`（舊版 INSTALL.md）→ 直接重跑本步驟以上 `--scopes` 命令補完，**不必先 logout**
   - `filter.create` 跑出 403 ACCESS_TOKEN_SCOPE_INSUFFICIENT 雖然 token 有 mail.google.com → 是 Workspace Admin Console「App Access Control」沒把 gws-cli 升 Trusted（一次性後台工作，見 TROUBLESHOOTING.md）。**設完 Trust 後 Gmail settings 寫入子系統的傳播延遲可達 1–24 小時**（讀 + message 寫立刻通，settings 寫慢）
-- **對話模板：** 「我接下來引導你登入 gws CLI，會跳出瀏覽器讓你授權 Google Workspace 存取。我會用明確 scope 清單（50 個，maintainer 機 11 輪二分實測全部 Google granted）拿包括 Gmail 設定寫入、Forms、Chat 進階（含加人 / 表情符號 / 客製貼圖）、Meet、Classroom、Apps Script 完整工具鏈、Workspace admin / audit / usage 等所有日常 skill 需要的權限。**請務必用 dollbao.com.tw 公司帳號**（不是個人 gmail）。瀏覽器沒跳出來的話，設 `$env:BROWSER='echo'` 後重跑，把終端機印的 URL 複製到瀏覽器手動開。」
+- **對話模板：** 「我接下來引導你登入 gws CLI，會跳出瀏覽器讓你授權 Google Workspace 存取。我會用明確 scope 清單（44 個，maintainer 機實測 + non-admin 適用集合）拿包括 Gmail 設定寫入、Forms、Chat 進階（含加人 / 表情符號 / 客製貼圖）、Meet、Classroom、Apps Script 完整工具鏈等所有日常 skill 需要的權限。**請務必用 dollbao.com.tw 公司帳號**（不是個人 gmail）。瀏覽器沒跳出來的話，設 `$env:BROWSER='echo'` 後重跑，把終端機印的 URL 複製到瀏覽器手動開。」
 
 ### 步驟 10：裝 gws skill bundle ⭐
 - **意圖：** 把 ~85 個 gws-* / recipe-* skill 安裝到 `~/.claude/skills/`（排除 10 個 persona-*）
