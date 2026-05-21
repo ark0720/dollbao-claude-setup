@@ -199,11 +199,9 @@
 - **前置：** gws CLI 已裝（步驟 8）+ OAuth client 已配置（步驟 8.5）+ admin 已將 gws-cli 升級為 Trusted（一次性後台工作，見 `docs/TROUBLESHOOTING.md` §App-Access-Control）
 - **指令：**
   ```powershell
-  # 50 scope known-good (2026-05-20 二分驗證 11 輪：26 baseline + 24 新加，特意排除 directory.readonly)
-  # 全 25 一起加 (= 51) 會讓 Google consent flow 回 unknownerror，culprit 是 directory.readonly
-  # —— 它單獨加 (26+1=27) 沒事，但塞進大 scope set (50+1=51) 就 trigger 連 consent screen 都看不到
-  # 的 fail-fast，疑 Google 對非標準 alias scope 處理在大 set 下會 conflict。
-  # 詳見「特意 NOT 加的 scope」directory.readonly 那條。
+  # 44 scope (2026-05-21 修：原 50 - 6 admin/licensing；admin.* 與 apps.licensing 對 non-admin 帳號
+  # API 一律 403，留 token 沒意義 + consent screen 視覺嚇人。需要 admin 工作的人單獨另外 login)
+  # 排除清單與原因見下方「特意 NOT 加的 scope」
   $scopes = @(
     # 核心文件 / 通訊（10）
     'https://mail.google.com/',
@@ -251,13 +249,6 @@
     'https://www.googleapis.com/auth/script.deployments',
     'https://www.googleapis.com/auth/script.deployments.readonly',
     'https://www.googleapis.com/auth/script.processes',
-    # Workspace admin / billing（6）
-    'https://www.googleapis.com/auth/admin.directory.group',
-    'https://www.googleapis.com/auth/admin.directory.group.member',
-    'https://www.googleapis.com/auth/admin.directory.user.readonly',
-    'https://www.googleapis.com/auth/admin.reports.audit.readonly',
-    'https://www.googleapis.com/auth/admin.reports.usage.readonly',
-    'https://www.googleapis.com/auth/apps.licensing',
     # GCP / 身份（4）
     'https://www.googleapis.com/auth/cloud-platform',
     'openid',
@@ -268,20 +259,19 @@
   ```
 - **為什麼不用 `--full`：** 實測 `--full` 只在預設集合（drive / sheets / gmail.modify / calendar / docs / slides / tasks / openid / userinfo）上加 `pubsub + cloud-platform`，**根本不含** `gmail.settings.basic` / `forms` / `keep` / `chat` / `meet` / `contacts` / `classroom` / `script` / `admin.reports`。gws CLI `--help` 的「Request all scopes」描述是誤導；真正的「all」是上述 12 個固定集合，不是「全部 skill 需要的所有 scope」。
 - **為什麼用 `https://mail.google.com/` 取代 `gmail.modify`：** `gmail.modify` 只涵蓋訊息 + 標籤讀寫，**不涵蓋 Gmail settings 寫入**（filter / vacation / forwarding）。`https://mail.google.com/` 是 Gmail 最大 scope，涵蓋 messages + settings 全部讀寫，這是 AI 自動化 email（建 filter / 設自動回覆 / 設定轉寄）的必要條件。
-- **這 50 個 scope 怎麼來的（2026-05-19 初版 26 個實測 + 2026-05-20 擴 24 個經 11 輪二分驗證 OK）：**
+- **這 44 個 scope 怎麼來的（2026-05-19 初版 26 個實測 + 2026-05-20 擴 24 個經 11 輪二分驗證 OK + 2026-05-21 剔除 6 個 admin/licensing scope，因 non-admin 帳號 API 一律 403）：**
   - **核心文件 / 通訊**：mail.google.com（Gmail 全部含 filter / vacation 寫入）/ drive / spreadsheets / documents / presentations / tasks / forms.body / forms.responses.readonly / calendar / pubsub
   - **Gmail 設定子系統獨立 register**：gmail.settings.basic / gmail.settings.sharing（mail.google.com 已涵蓋但獨立 register 較乾淨，且未來若分發窄 scope client 可直接用）
   - **Chat 進階**：chat.messages / chat.messages.readonly / chat.messages.reactions(.create/.readonly) / chat.memberships(.readonly) / chat.customemojis(.readonly) / chat.spaces / chat.spaces.create — 涵蓋新人加群 / AI 看 chat 整理 / 表情符號 / 公司客製貼圖 / 自動建群（**Chat API 還需在 Cloud Console 註冊 Chat app**，見 TROUBLESHOOTING.md）
   - **Drive 細權限**：drive.file（只存取 user 給定檔案）/ drive.metadata.readonly（只看 metadata）/ drive.appdata（app sandbox）/ drive.scripts — 未來分發窄 client 用
   - **Workspace 其他**：meetings.space.created/.readonly/.settings — Meet 完整；contacts/.readonly/.other.readonly — 含「其他聯絡人」；classroom.courses；forms.body.readonly
   - **Apps Script 完整工具鏈**：script.projects(.readonly) / script.deployments(.readonly) / script.processes — push code + 建 deployment + 看執行歷史
-  - **Workspace admin**：admin.directory.group(.member) — Group 成員；admin.directory.user.readonly — 查同事；admin.reports.audit.readonly + admin.reports.usage.readonly — Workspace 稽核 + 使用量
-  - **Workspace 訂閱**：apps.licensing — 看 License 配額
   - **GCP / 身份**：cloud-platform / openid / userinfo.email / userinfo.profile
 - **特意 NOT 加的 scope（不是漏，是刻意不加）：**
   - `keep` / `keep.readonly` — Google 對第三方 OAuth 整個擋（400 invalid_scope），會讓整個 OAuth flow fail-fast → gws-keep skill 不可用（manifest 已 exclude）
   - `apps.alerts` — Console 判 invalid（Alert Center API 不開放或未啟用），加了會讓 console「新增至資料表」整批失敗
-  - **`directory.readonly`** — 2026-05-20 二分驗證 11 輪確認的 culprit：單獨加 (26+1=27) OK，但加進 50+ scope set (50+1=51) 會讓 Google consent flow 連 consent screen 都看不到就跳 `accounts.google.com/info/unknownerror`「發生錯誤」。推測是 People API directory.readonly 在 Google 後端跟 admin.directory.* / contacts.* 共存時觸發 conflict（非標準 alias scope 在大 set 下處理 bug）。**真要拿公司通訊錄就用 `admin.directory.user.readonly` + `admin.directory.group`**（已含），別碰這個。
+  - **`directory.readonly`** — 2026-05-20 二分驗證 11 輪確認的 culprit：單獨加 (26+1=27) OK，但加進 50+ scope set (50+1=51) 會讓 Google consent flow 連 consent screen 都看不到就跳 `accounts.google.com/info/unknownerror`「發生錯誤」。推測是 People API directory.readonly 在 Google 後端跟 admin.directory.* / contacts.* 共存時觸發 conflict（非標準 alias scope 在大 set 下處理 bug）。**普通員工拿不到通訊錄資料是正常**（People API directory 需 admin role），有 admin 需求的人另外用獨立 OAuth client 處理。
+  - **`admin.directory.*` / `admin.reports.*` / `apps.licensing`（6 個）** — 2026-05-21 從新人安裝包剔除：non-admin 帳號 API 一律 403（OAuth scope ≠ admin role），留 token 沒意義 + consent screen 出現「查看 Workspace 報告」會嚇到新人。有 admin 工作需求的人（如 ark）用獨立 OAuth client（如 dollbao-data-center 的）跑這些。
   - **`chat.admin.*` / `chat.delete` / `chat.import` / `chat.bot` / `chat.app.*`** — 管理員身份或 Chat app-as-bot 模式，風險過高（破壞性、權限放大）
   - **`admin.directory.user`（寫）** — 寫員工帳號 / 開停帳是 HR 動作，不該由 CLI 做
   - **`ediscovery` / `cloud-identity.inboundsso` / `cloud-identity.policies` / `cloud-identity.devices`** — 法遵 / SSO / MDM 全域設定，改錯影響全公司
@@ -296,7 +286,7 @@
   - **chat.messages / chat.spaces 呼叫** — 即使 scope 有，Chat API 要求 Cloud Console 另外註冊「Chat app」（人類 OAuth 無法繞過），見 TROUBLESHOOTING.md
 - **成功判準：**
   - `gws auth status` 顯示 logged in + 用戶 email
-  - `gws auth status` 的 JSON 含 `scope_count: 52`（50 個 spec scope + `email`+`profile` 拆解 = 52）
+  - `gws auth status` 的 JSON 含 `scope_count: 46`（44 個 spec scope + `email`+`profile` 拆解 = 46）
   - 試跑 `gws gmail users settings filters list --params '{"userId":"me"}'`：不報 403 即正常（filter 讀不受 Trust 影響）
 - **常見坑：**
   - 用戶用個人 gmail 登入而非公司帳號 → skill 跑起來會權限不足。確認用 `@dollbao.com.tw` 帳號
@@ -416,7 +406,7 @@
 
 - **偵測已裝：** 用 `Get-Command {tool}` 或 `winget list --id {id}`，**不要** 重複跑安裝
 - **skill 比 hash：** `install-gws-bundle.ps1` / `install-dollbao-skills.ps1` 內建 hash 比對，已對齊則 skip
-- **auth 不重做：** `gws auth status` 顯示 OK **且** `scope_count` 已 ≥ 52 + 含 `https://mail.google.com/` 才 skip step 9；否則需重跑 `gws auth login --scopes ...` 補 scope（舊新人若已跑過 `--full`、無 flag 的 `gws auth login`、或 26-scope 短版，scope 必定不夠，需依本 INSTALL.md 重跑）
+- **auth 不重做：** `gws auth status` 顯示 OK **且** `scope_count` 已 ≥ 46 + 含 `https://mail.google.com/` 才 skip step 9；否則需重跑 `gws auth login --scopes ...` 補 scope（舊新人若已跑過 `--full`、無 flag 的 `gws auth login`、26-scope 短版、或 50-scope 含 admin 版，scope 不對，需依本 INSTALL.md 重跑）
 - **對話可中斷重來：** 用戶 Ctrl+C 後重貼 bootstrap prompt，AI 應從中斷點繼續而非從頭
 
 ---
