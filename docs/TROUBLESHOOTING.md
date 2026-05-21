@@ -9,6 +9,7 @@
 - [App-Access-Control — Gmail settings write 永遠 403](#app-access-control--gmail-settings-write-永遠-403)
 - [gws `--full` 拿到的 scope 比想像中少很多](#gws---full-拿到的-scope-比想像中少很多)
 - [OAuth flow `invalid_scope` — 某個 scope 對第三方 client 不開放](#oauth-flow-invalid_scope--某個-scope-對第三方-client-不開放)
+- [OAuth flow 「Some requested scopes were invalid」— consent screen allowlist 不夠（不是 Trust 問題）](#oauth-flow-some-requested-scopes-were-invalid--consent-screen-allowlist-不夠不是-trust-問題)
 - [Chat API 404 「Google Chat app not found」— scope 有也叫不動](#chat-api-404-google-chat-app-not-found--scope-有也叫不動)
 - [瀏覽器沒跳出 OAuth 同意畫面](#瀏覽器沒跳出-oauth-同意畫面)
 
@@ -94,6 +95,46 @@ openid, userinfo.email, userinfo.profile
 **預防：** 新增 scope 時逐個加，不要一次塞 20+。一個壞的會擋全部。
 
 **首次發現：** 2026-05-19（commit 待補）
+
+---
+
+## OAuth flow 「Some requested scopes were invalid」— consent screen allowlist 不夠（不是 Trust 問題）
+
+**症狀：**
+- 點 OAuth 同意 URL → 用戶帳號登入後 → Google 直接跳 **「已封鎖存取權：授權錯誤」**
+- 錯誤詳情顯示一大段：`Some requested scopes were invalid. {valid=[...一串還在 allowlist 上的 scope...]}`
+- 看 URL 是 `accounts.google.com/info/...` 之類的錯誤頁，不是 unknownerror
+
+**重要：跟「invalid_scope 400」是不同症狀**
+| 症狀 | 原因 | 解法 |
+|---|---|---|
+| `400: invalid_scope` + 「Some requested scopes cannot be shown: [scope]」 | scope 本身對第三方 OAuth client 整個不開放（如 keep） | 拿掉那個 scope，永遠不能加 |
+| **「Some requested scopes were invalid」+ valid list** | scope 沒在這個 OAuth client 的「資料存取權」allowlist 上 | 在 GCP Console 補進去就好 |
+
+**重要：跟 App-Access-Control「Trust 升級」也無關**
+有些 AI 會誤判建議去 Workspace Admin Console 升 Trust——**不要做**。Trust 升級是給「已登入成功但 API 寫入子系統被擋（如 Gmail filter.create）」的，不影響 OAuth flow 本身能不能通過。如果連 consent 都過不去，問題在 OAuth client 的 consent screen，不在 Workspace Admin Console。
+
+**根因：OAuth consent screen 的「資料存取權」是強制 allowlist**
+
+GCP Console 「Google Auth Platform → 資料存取權」這個 scope 清單不是「顯示給用戶看的清單」而已，而是 **強制 allowlist**。
+- Client request 的 scope 全部都要在這清單上，**只要有一個不在 allowlist，Google 直接擋掉整個 OAuth flow**（不像 silent drop 那樣容忍，而是顯式報「scopes were invalid」）。
+- valid 清單就是 Google 告訴你「目前 allowlist 上有這些」，方便你比對缺什麼。
+
+**診斷流程（30 秒判斷）：**
+
+1. 先確認 client_id：跑 `gcloud secrets versions access latest --secret=gws-oauth-client --project=dollbao-gws-cli | python -c "import json,sys; print(json.load(sys.stdin)['installed']['client_id'])"` 看是不是 `813181648456-flanumqvc...`。如果不是 → client_secret.json 拉錯了，重做 INSTALL step 8.5。
+
+2. 確認後：開 `https://console.cloud.google.com/auth/scopes?project=dollbao-gws-cli`，看「資料存取權」清單是否含 INSTALL.md step 9 `$scopes` 陣列的所有項目。
+
+3. 缺哪個就在「新增或移除範圍」→「手動新增範圍」貼進去 → Save。
+
+**解法：**
+- 員工：**什麼都不用改**。等 maintainer 補完 allowlist 後 `gws auth logout && gws auth login --scopes ...` 重做一次就 OK。
+- Maintainer：按診斷流程 step 2-3 補 allowlist。注意**絕對不要加 `https://www.googleapis.com/auth/directory.readonly`**（已知 culprit，加進 50+ scope 集合會讓 OAuth flow 跳 `unknownerror`，見 memory `oauth-scope-249-classification`）。
+
+**首次發現：** 2026-05-21（rose@dollbao.com.tw 撞到，commit cfca835 後可用 44 scope 通過）
+
+**為什麼會搞錯方向：** 之前另一個 AI session 看到「已封鎖存取權」直覺以為是 OAuth app 在 Testing mode 沒加測試者、或 Workspace Trust 沒升，浪費了一輪溝通。**辨識重點：右側錯誤詳情有沒有 `Some requested scopes were invalid` + `valid=[...]` 清單——有就是 allowlist 問題，跟 Trust / 測試者名單都無關。**
 
 ---
 
